@@ -2,15 +2,25 @@ package transactions
 
 import "time"
 
+// DurabilityLevel specifies the durability level to use for a mutation.
 type DurabilityLevel int
 
 const (
-	DurabilityLevelNone                       = DurabilityLevel(1)
-	DurabilityLevelMajority                   = DurabilityLevel(2)
+	// DurabilityLevelNone indicates that no durability is needed.
+	DurabilityLevelNone = DurabilityLevel(1)
+
+	// DurabilityLevelMajority indicates the operation must be replicated to the majority.
+	DurabilityLevelMajority = DurabilityLevel(2)
+
+	// DurabilityLevelMajorityAndPersistToActive indicates the operation must be replicated
+	// to the majority and persisted to the active server.
 	DurabilityLevelMajorityAndPersistToActive = DurabilityLevel(3)
-	DurabilityLevelPersistToMajority          = DurabilityLevel(4)
+
+	// DurabilityLevelPersistToMajority indicates the operation must be persisted to the active server.
+	DurabilityLevelPersistToMajority = DurabilityLevel(4)
 )
 
+// Config specifies various tunable options related to transactions.
 type Config struct {
 	// ExpirationTime sets the maximum time that transactions created
 	// by this Transactions object can run for, before expiring.
@@ -37,6 +47,7 @@ type Config struct {
 	CleanupLostAttempts bool
 }
 
+//PerTransactionConfig specifies options which can be overriden on a per transaction basis.
 type PerTransactionConfig struct {
 	// DurabilityLevel specifies the durability level that should be used
 	// for all write operations performed by this transaction.
