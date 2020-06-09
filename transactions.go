@@ -12,12 +12,12 @@ type Transactions struct {
 	config Config
 }
 
-func (t *Transactions) Config() Config {
-	return t.config
+func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
+	return nil, errors.New("not implemented")
 }
 
-func (t *Transactions) Create(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
-	return nil, errors.New("not implemented")
+func (t *Transactions) Config() Config {
+	return t.config
 }
 
 func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig) error {

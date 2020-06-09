@@ -1,8 +1,6 @@
 package transactions
 
 import (
-	"time"
-
 	"github.com/couchbase/gocb"
 )
 
@@ -11,5 +9,8 @@ type GetResult struct {
 	transcoder gocb.Transcoder
 	flags      uint32
 	contents   []byte
-	expiry     *time.Duration
+}
+
+func (d *GetResult) Content(valuePtr interface{}) error {
+	return d.transcoder.Decode(d.contents, d.flags, valuePtr)
 }
