@@ -1,6 +1,8 @@
 package transactions
 
-import "github.com/couchbase/gocb"
+import (
+	gocb "github.com/couchbase/gocb/v2"
+)
 
 // Attempt represents a singular attempt at executing a transaction.  A
 // transaction may require multiple attempts before being successful.

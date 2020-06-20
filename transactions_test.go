@@ -17,7 +17,7 @@ func TestSomething(t *testing.T) {
 		panic(err)
 	}
 
-	bucket := cluster.Bucket("travel-sample")
+	bucket := cluster.Bucket("default")
 	collection := bucket.DefaultCollection()
 
 	testDummy := map[string]string{"name": "frank"}

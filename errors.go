@@ -38,4 +38,7 @@ var (
 
 	// ErrAtrFull indicates that the ATR record was too full to accept a new mutation.
 	ErrAtrFull = errors.New("atr full")
+
+	// ErrAttemptExpired indicates an attempt expired
+	ErrAttemptExpired = errors.New("attempt expired")
 )
