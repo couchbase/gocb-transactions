@@ -8,7 +8,7 @@ import (
 )
 
 func TestSomething(t *testing.T) {
-	cluster, err := gocb.Connect("couchbase://172.23.111.132", gocb.ClusterOptions{
+	cluster, err := gocb.Connect("couchbase://localhost", gocb.ClusterOptions{
 		Username: "Administrator",
 		Password: "password",
 	})
