@@ -1,6 +1,8 @@
 package transactions
 
 import (
+	"encoding/json"
+
 	gocb "github.com/couchbase/gocb/v2"
 )
 
@@ -12,7 +14,7 @@ type GetResult struct {
 	cas        gocb.Cas
 	transcoder gocb.Transcoder
 	flags      uint32
-	contents   []byte
+	contents   json.RawMessage
 }
 
 // Content provides access to the documents contents.

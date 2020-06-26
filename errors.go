@@ -41,4 +41,13 @@ var (
 
 	// ErrAttemptExpired indicates an attempt expired
 	ErrAttemptExpired = errors.New("attempt expired")
+
+	// ErrAtrNotFound indicates that an expected ATR document was missing
+	ErrAtrNotFound = errors.New("atr not found")
+
+	// ErrAtrEntryNotFound indicates that an expected ATR entry was missing
+	ErrAtrEntryNotFound = errors.New("atr entry not found")
+
+	// ErrUhOh is used for now to describe errors I yet know how to categorize
+	ErrUhOh = errors.New("uh oh")
 )

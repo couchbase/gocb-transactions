@@ -1,9 +1,28 @@
 package transactions
 
+import "encoding/json"
+
+type jsonAtrState string
+
+const (
+	jsonAtrStatePending   = jsonAtrState("PENDING")
+	jsonAtrStateCommitted = jsonAtrState("COMMITTED")
+	jsonAtrStateCompleted = jsonAtrState("COMPLETED")
+	jsonAtrStateAborted   = jsonAtrState("ABORTED")
+)
+
+type jsonMutationType string
+
+const (
+	jsonMutationInsert  = jsonMutationType("insert")
+	jsonMutationReplace = jsonMutationType("replace")
+	jsonMutationRemove  = jsonMutationType("remove")
+)
+
 type jsonAtrMutation struct {
+	BucketName     string `json:"bkt,omitempty"`
 	ScopeName      string `json:"scp,omitempty"`
 	CollectionName string `json:"col,omitempty"`
-	BucketName     string `json:"bkt,omitempty"`
 	DocID          string `json:"id,omitempty"`
 }
 
@@ -34,8 +53,8 @@ type jsonTxnXattr struct {
 		CollectionName string `json:"coll,omitempty"`
 	} `json:"atr,omitempty"`
 	Operation struct {
-		Type   string      `json:"type,omitempty"`
-		Staged interface{} `json:"stgd,omitempty"`
+		Type   jsonMutationType `json:"type,omitempty"`
+		Staged json.RawMessage  `json:"stgd,omitempty"`
 	} `json:"op,omitempty"`
 	Restore struct {
 		OriginalCAS string `json:"cas,omitempty"`
