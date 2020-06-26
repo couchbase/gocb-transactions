@@ -20,6 +20,11 @@ func TestSomething(t *testing.T) {
 	bucket := cluster.Bucket("default")
 	collection := bucket.DefaultCollection()
 
+	collection.Remove("_txn:atr-296-#f79", nil)
+	collection.Remove("test-id", nil)
+	collection.Remove("anotherDoc", nil)
+	collection.Remove("yetAnotherDoc", nil)
+
 	testDummy := map[string]string{"name": "frank"}
 	_, err = collection.Upsert("anotherDoc", testDummy, nil)
 	if err == nil {
