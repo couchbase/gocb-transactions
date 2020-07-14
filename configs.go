@@ -2,22 +2,20 @@ package transactions
 
 import "time"
 
-// DurabilityLevel specifies the durability level to use for a mutation.
-type DurabilityLevel int
+// DurabilityLevel specifies the level of synchronous replication to use.
+type DurabilityLevel uint8
 
 const (
-	// DurabilityLevelNone indicates that no durability is needed.
-	DurabilityLevelNone = DurabilityLevel(1)
+	// DurabilityLevelMajority specifies that a mutation must be replicated (held in memory) to a majority of nodes.
+	DurabilityLevelMajority DurabilityLevel = iota + 1
 
-	// DurabilityLevelMajority indicates the operation must be replicated to the majority.
-	DurabilityLevelMajority = DurabilityLevel(2)
+	// DurabilityLevelMajorityAndPersistOnMaster specifies that a mutation must be replicated (held in memory) to a
+	// majority of nodes and also persisted (written to disk) on the active node.
+	DurabilityLevelMajorityAndPersistOnMaster
 
-	// DurabilityLevelMajorityAndPersistToActive indicates the operation must be replicated
-	// to the majority and persisted to the active server.
-	DurabilityLevelMajorityAndPersistToActive = DurabilityLevel(3)
-
-	// DurabilityLevelPersistToMajority indicates the operation must be persisted to the active server.
-	DurabilityLevelPersistToMajority = DurabilityLevel(4)
+	// DurabilityLevelPersistToMajority specifies that a mutation must be persisted (written to disk) to a majority
+	// of nodes.
+	DurabilityLevelPersistToMajority
 )
 
 // Config specifies various tunable options related to transactions.

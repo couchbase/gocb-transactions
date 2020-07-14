@@ -1,53 +1,55 @@
 package transactions
 
-import "errors"
+import (
+	coretxns "github.com/couchbaselabs/gocbcore-transactions"
+)
 
 var (
 	// ErrOther indicates an non-specific error has occured.
-	ErrOther = errors.New("other error")
+	ErrOther = coretxns.ErrOther
 
 	// ErrTransient indicates a transient error occured which may succeed at a later point in time.
-	ErrTransient = errors.New("transient error")
+	ErrTransient = coretxns.ErrTransient
 
 	// ErrDocNotFound indicates that a needed document was not found.
-	ErrDocNotFound = errors.New("doc not found")
+	ErrDocNotFound = coretxns.ErrDocNotFound
 
 	// ErrDocAlreadyExists indicates that a document already existed unexpectedly.
-	ErrDocAlreadyExists = errors.New("doc already exists")
+	ErrDocAlreadyExists = coretxns.ErrDocAlreadyExists
 
 	// ErrPathNotFound indicates that a needed path was not found.
-	ErrPathNotFound = errors.New("path not found")
+	ErrPathNotFound = coretxns.ErrPathNotFound
 
 	// ErrPathAlreadyExists indicates that a path already existed unexpectedly.
-	ErrPathAlreadyExists = errors.New("path already exists")
+	ErrPathAlreadyExists = coretxns.ErrPathAlreadyExists
 
 	// ErrWriteWriteConflict indicates that another transaction conflicted with this one.
-	ErrWriteWriteConflict = errors.New("write write conflict")
+	ErrWriteWriteConflict = coretxns.ErrWriteWriteConflict
 
 	// ErrCasMismatch indicates that a cas mismatch occured during a store operation.
-	ErrCasMismatch = errors.New("cas mismatch")
+	ErrCasMismatch = coretxns.ErrCasMismatch
 
 	// ErrHard indicates that an unrecoverable error occured.
-	ErrHard = errors.New("hard")
+	ErrHard = coretxns.ErrHard
 
 	// ErrAmbiguous indicates that a failure occured but the outcome was not known.
-	ErrAmbiguous = errors.New("ambiguous error")
+	ErrAmbiguous = coretxns.ErrAmbiguous
 
 	// ErrExpiry indicates that an operation expired before completion.
-	ErrExpiry = errors.New("expiry")
+	ErrExpiry = coretxns.ErrExpiry
 
 	// ErrAtrFull indicates that the ATR record was too full to accept a new mutation.
-	ErrAtrFull = errors.New("atr full")
+	ErrAtrFull = coretxns.ErrAtrFull
 
 	// ErrAttemptExpired indicates an attempt expired
-	ErrAttemptExpired = errors.New("attempt expired")
+	ErrAttemptExpired = coretxns.ErrAttemptExpired
 
 	// ErrAtrNotFound indicates that an expected ATR document was missing
-	ErrAtrNotFound = errors.New("atr not found")
+	ErrAtrNotFound = coretxns.ErrAtrNotFound
 
 	// ErrAtrEntryNotFound indicates that an expected ATR entry was missing
-	ErrAtrEntryNotFound = errors.New("atr entry not found")
+	ErrAtrEntryNotFound = coretxns.ErrAtrEntryNotFound
 
 	// ErrUhOh is used for now to describe errors I yet know how to categorize
-	ErrUhOh = errors.New("uh oh")
+	ErrUhOh = coretxns.ErrUhOh
 )

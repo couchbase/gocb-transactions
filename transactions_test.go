@@ -8,7 +8,8 @@ import (
 )
 
 func TestSomething(t *testing.T) {
-	cluster, err := gocb.Connect("couchbase://localhost", gocb.ClusterOptions{
+	gocb.SetLogger(gocb.VerboseStdioLogger())
+	cluster, err := gocb.Connect("couchbase://172.23.111.129", gocb.ClusterOptions{
 		Username: "Administrator",
 		Password: "password",
 	})
@@ -99,7 +100,7 @@ func TestSomething(t *testing.T) {
 		return nil
 	}, nil)
 	if err != nil {
-		log.Printf("Run Error: %+v", err)
+		log.Fatalf("Run Error: %+v", err)
 	}
 
 }

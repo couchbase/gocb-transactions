@@ -2,24 +2,47 @@ package transactions
 
 import (
 	"errors"
-	"log"
 	"time"
 
 	gocb "github.com/couchbase/gocb/v2"
-	"github.com/google/uuid"
+	coretxns "github.com/couchbaselabs/gocbcore-transactions"
 )
 
 type AttemptFunc func(*AttemptContext) error
 
 type Transactions struct {
-	config Config
+	config  Config
+	cluster *gocb.Cluster
+
+	txns *coretxns.Transactions
 }
 
 // Init will initialize the transactions library and return a Transactions
 // object which can be used to perform transactions.
 func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
-	log.Printf("skipping unimplemented Init")
-	return nil, nil
+	if config == nil {
+		config = &Config{
+			DurabilityLevel: DurabilityLevelMajority,
+		}
+	}
+	// TODO we're gonna have to get this from gocb somehow.
+	if config.KeyValueTimeout == 0 {
+		config.KeyValueTimeout = 10000 * time.Millisecond
+	}
+
+	txns, err := coretxns.Init(&coretxns.Config{
+		DurabilityLevel: coretxns.DurabilityLevel(config.DurabilityLevel),
+		KeyValueTimeout: config.KeyValueTimeout,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &Transactions{
+		cluster: cluster,
+		config:  *config,
+		txns:    txns,
+	}, nil
 }
 
 // Config returns the config that was used during the initialization
@@ -31,25 +54,29 @@ func (t *Transactions) Config() Config {
 // Run runs a lambda to perform a number of operations as part of a
 // singular transaction.
 func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig) error {
-	transactionUUID := uuid.New().String()
-	log.Printf("Starting Transaction %s", transactionUUID)
-
-	expiryTime := time.Now().Add(15 * time.Second)
-
-	attemptUUID := uuid.New().String()
-	attempt := AttemptContext{
-		transactionID:       transactionUUID,
-		id:                  attemptUUID,
-		state:               attemptStateNothingWritten,
-		stagedMutations:     nil,
-		finalMutationTokens: gocb.MutationState{},
-		atrID:               -1,
-		atrCollection:       nil,
-		expiryOvertimeMode:  false,
-		expiryTime:          expiryTime,
+	if perConfig == nil {
+		perConfig = &PerTransactionConfig{
+			DurabilityLevel: t.config.DurabilityLevel,
+		}
 	}
 
-	err := logicFn(&attempt)
+	txn, err := t.txns.BeginTransaction(&coretxns.PerTransactionConfig{
+		DurabilityLevel: coretxns.DurabilityLevel(perConfig.DurabilityLevel),
+	})
+	if err != nil {
+		return err
+	}
+
+	err = txn.NewAttempt()
+	if err != nil {
+		return err
+	}
+
+	attempt := AttemptContext{
+		txn: txn,
+	}
+
+	err = logicFn(&attempt)
 
 	return err
 }
