@@ -15,7 +15,8 @@ type Transactions struct {
 	cluster    *gocb.Cluster
 	transcoder gocb.Transcoder
 
-	txns *coretxns.Transactions
+	txns         *coretxns.Transactions
+	hooksWrapper *coreTxnsHooksWrapper
 }
 
 // Init will initialize the transactions library and return a Transactions
@@ -31,19 +32,28 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 		config.KeyValueTimeout = 10000 * time.Millisecond
 	}
 
+	var hooksWrapper *coreTxnsHooksWrapper
+	if config.Internal.Hooks != nil {
+		hooksWrapper = &coreTxnsHooksWrapper{
+			Hooks: config.Internal.Hooks.TransactionHooks(),
+		}
+	}
+
 	txns, err := coretxns.Init(&coretxns.Config{
 		DurabilityLevel: coretxns.DurabilityLevel(config.DurabilityLevel),
 		KeyValueTimeout: config.KeyValueTimeout,
+		Internal:        struct{ Hooks coretxns.TransactionHooks }{Hooks: hooksWrapper},
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &Transactions{
-		cluster:    cluster,
-		config:     *config,
-		txns:       txns,
-		transcoder: gocb.NewJSONTranscoder(),
+		cluster:      cluster,
+		config:       *config,
+		txns:         txns,
+		transcoder:   gocb.NewJSONTranscoder(),
+		hooksWrapper: hooksWrapper,
 	}, nil
 }
 
@@ -79,6 +89,10 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 		attempt := AttemptContext{
 			txn:        txn,
 			transcoder: t.transcoder,
+		}
+
+		if t.hooksWrapper != nil {
+			t.hooksWrapper.Ctx = attempt
 		}
 
 		err = logicFn(&attempt)
