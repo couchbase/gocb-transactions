@@ -2,11 +2,25 @@ package transactions
 
 import (
 	gocb "github.com/couchbase/gocb/v2"
+	coretxns "github.com/couchbaselabs/gocbcore-transactions"
+)
+
+type AttemptState int
+
+const (
+	AttemptStateNothingWritten AttemptState = AttemptState(coretxns.AttemptStateNothingWritten)
+	AttemptStatePending        AttemptState = AttemptState(coretxns.AttemptStatePending)
+	AttemptStateCommitted      AttemptState = AttemptState(coretxns.AttemptStateCommitted)
+	AttemptStateCompleted      AttemptState = AttemptState(coretxns.AttemptStateCompleted)
+	AttemptStateAborted        AttemptState = AttemptState(coretxns.AttemptStateAborted)
+	AttemptStateRolledBack     AttemptState = AttemptState(coretxns.AttemptStateRolledBack)
 )
 
 // Attempt represents a singular attempt at executing a transaction.  A
 // transaction may require multiple attempts before being successful.
 type Attempt struct {
+	State AttemptState
+	ID    string
 }
 
 // Result represents the result of a transaction which was executed.
@@ -29,4 +43,9 @@ type Result struct {
 	// Serialized represents the serialized data from this transaction if
 	// the transaction was serialized as opposed to being executed.
 	Serialized *SerializedContext
+
+	// Internal: This should never be used and is not supported.
+	Internal struct {
+		MutationTokens []gocb.MutationToken
+	}
 }

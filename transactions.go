@@ -11,8 +11,9 @@ import (
 type AttemptFunc func(*AttemptContext) error
 
 type Transactions struct {
-	config  Config
-	cluster *gocb.Cluster
+	config     Config
+	cluster    *gocb.Cluster
+	transcoder gocb.Transcoder
 
 	txns *coretxns.Transactions
 }
@@ -39,9 +40,10 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 	}
 
 	return &Transactions{
-		cluster: cluster,
-		config:  *config,
-		txns:    txns,
+		cluster:    cluster,
+		config:     *config,
+		txns:       txns,
+		transcoder: gocb.NewJSONTranscoder(),
 	}, nil
 }
 
@@ -53,7 +55,7 @@ func (t *Transactions) Config() Config {
 
 // Run runs a lambda to perform a number of operations as part of a
 // singular transaction.
-func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig) error {
+func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig) (*Result, error) {
 	if perConfig == nil {
 		perConfig = &PerTransactionConfig{
 			DurabilityLevel: t.config.DurabilityLevel,
@@ -64,21 +66,82 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 		DurabilityLevel: coretxns.DurabilityLevel(perConfig.DurabilityLevel),
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = txn.NewAttempt()
-	if err != nil {
-		return err
+	var attempts []Attempt
+	for {
+		err = txn.NewAttempt()
+		if err != nil {
+			return nil, err
+		}
+
+		attempt := AttemptContext{
+			txn:        txn,
+			transcoder: t.transcoder,
+		}
+
+		err = logicFn(&attempt)
+
+		if err != nil {
+			a := txn.Attempt()
+			attempts = append(attempts, Attempt{
+				ID:    a.ID,
+				State: AttemptState(a.State),
+			})
+			continue
+		}
+
+		if attempt.committed {
+			a := txn.Attempt()
+			attempts = append(attempts, Attempt{
+				ID:    a.ID,
+				State: AttemptState(a.State),
+			})
+
+			state := &gocb.MutationState{}
+			for _, tok := range a.MutationState {
+				state.Internal().Add(tok.BucketName, tok.MutationToken)
+			}
+
+			return &Result{
+				Attempts:          attempts,
+				TransactionID:     txn.ID(),
+				UnstagingComplete: a.State == coretxns.AttemptStateCompleted,
+				MutationState:     *state,
+				Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
+			}, nil
+		}
+
+		err = attempt.Commit()
+		if err != nil {
+			a := txn.Attempt()
+			attempts = append(attempts, Attempt{
+				ID:    a.ID,
+				State: AttemptState(a.State),
+			})
+			continue
+		}
+
+		a := txn.Attempt()
+		attempts = append(attempts, Attempt{
+			ID:    a.ID,
+			State: AttemptState(a.State),
+		})
+
+		state := &gocb.MutationState{}
+		for _, tok := range a.MutationState {
+			state.Internal().Add(tok.BucketName, tok.MutationToken)
+		}
+
+		return &Result{
+			Attempts:          attempts,
+			TransactionID:     txn.ID(),
+			UnstagingComplete: a.State == coretxns.AttemptStateCompleted,
+			MutationState:     *state,
+			Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
+		}, nil
 	}
-
-	attempt := AttemptContext{
-		txn: txn,
-	}
-
-	err = logicFn(&attempt)
-
-	return err
 }
 
 // Commit will commit a previously prepared and serialized transaction.

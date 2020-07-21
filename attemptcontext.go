@@ -1,7 +1,6 @@
 package transactions
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 
@@ -11,7 +10,11 @@ import (
 
 // AttemptContext represents a single attempt to execute a transaction.
 type AttemptContext struct {
-	txn *coretxns.Transaction
+	txn        *coretxns.Transaction
+	transcoder gocb.Transcoder
+
+	committed  bool
+	rolledBack bool
 }
 
 // GetOptional will attempt to fetch a document, and return nil if it does not exist.
@@ -25,7 +28,7 @@ func (c *AttemptContext) GetOptional(collection *gocb.Collection, id string) (*G
 
 // Get will attempt to fetch a document, and fail the transaction if it does not exist.
 func (c *AttemptContext) Get(collection *gocb.Collection, id string) (resOut *GetResult, errOut error) {
-	a, err := collection.InternalCollection().IORouter()
+	a, err := collection.Bucket().Internal().IORouter()
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +72,7 @@ func (c *AttemptContext) Replace(doc *GetResult, value interface{}) (resOut *Get
 	id := doc.docID
 
 	// TODO: Use Transcoder here
-	valueBytes, err := json.Marshal(value)
+	valueBytes, _, err := c.transcoder.Encode(value)
 	if err != nil {
 		return nil, err
 	}
@@ -107,13 +110,13 @@ func (c *AttemptContext) Replace(doc *GetResult, value interface{}) (resOut *Get
 
 // Insert will insert a new document, failing if the document already exists.
 func (c *AttemptContext) Insert(collection *gocb.Collection, id string, value interface{}) (resOut *GetResult, errOut error) {
-	a, err := collection.InternalCollection().IORouter()
+	a, err := collection.Bucket().Internal().IORouter()
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: Use Transcoder here
-	valueBytes, err := json.Marshal(value)
+	valueBytes, _, err := c.transcoder.Encode(value)
 	if err != nil {
 		return nil, err
 	}
@@ -172,6 +175,7 @@ func (c *AttemptContext) Remove(doc *GetResult) (errOut error) {
 
 // Commit will attempt to commit the transaction in its entirety.
 func (c *AttemptContext) Commit() (errOut error) {
+	c.committed = true
 	waitCh := make(chan struct{}, 1)
 	err := c.txn.Commit(func(err error) {
 		errOut = err
@@ -187,6 +191,7 @@ func (c *AttemptContext) Commit() (errOut error) {
 
 // Rollback will undo all changes related to a transaction.
 func (c *AttemptContext) Rollback() (errOut error) {
+	c.rolledBack = true
 	waitCh := make(chan struct{}, 1)
 	err := c.txn.Rollback(func(err error) {
 		errOut = err
