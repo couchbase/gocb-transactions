@@ -16,7 +16,7 @@ type Transactions struct {
 	transcoder gocb.Transcoder
 
 	txns         *coretxns.Transactions
-	hooksWrapper *coreTxnsHooksWrapper
+	hooksWrapper hooksWrapper
 }
 
 // Init will initialize the transactions library and return a Transactions
@@ -32,8 +32,10 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 		config.KeyValueTimeout = 10000 * time.Millisecond
 	}
 
-	var hooksWrapper *coreTxnsHooksWrapper
-	if config.Internal.Hooks != nil {
+	var hooksWrapper hooksWrapper
+	if config.Internal.Hooks == nil {
+		hooksWrapper = &noopHooksWrapper{}
+	} else {
 		hooksWrapper = &coreTxnsHooksWrapper{
 			Hooks: config.Internal.Hooks.TransactionHooks(),
 		}
@@ -92,7 +94,7 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 		}
 
 		if t.hooksWrapper != nil {
-			t.hooksWrapper.Ctx = attempt
+			t.hooksWrapper.SetAttemptContext(attempt)
 		}
 
 		err = logicFn(&attempt)
@@ -103,7 +105,7 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				ID:    a.ID,
 				State: AttemptState(a.State),
 			})
-			continue
+			return nil, err
 		}
 
 		if attempt.committed {
@@ -134,7 +136,7 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				ID:    a.ID,
 				State: AttemptState(a.State),
 			})
-			continue
+			return nil, err
 		}
 
 		a := txn.Attempt()

@@ -1,5 +1,7 @@
 package transactions
 
+import coretxns "github.com/couchbaselabs/gocbcore-transactions"
+
 // TransactionHooks provides a number of internal hooks used for testing.
 // Internal: This should never be used and is not supported.
 type TransactionHooks interface {
@@ -70,147 +72,302 @@ type Hooks interface {
 	ClientRecordHooks() ClientRecordHooks
 }
 
+type hooksWrapper interface {
+	SetAttemptContext(ctx AttemptContext)
+	coretxns.TransactionHooks
+}
+
 type coreTxnsHooksWrapper struct {
-	Ctx   AttemptContext
+	ctx   AttemptContext
 	Hooks TransactionHooks
 }
 
+func (cthw *coreTxnsHooksWrapper) SetAttemptContext(ctx AttemptContext) {
+	cthw.ctx = ctx
+}
+
 func (cthw *coreTxnsHooksWrapper) BeforeATRCommit() error {
-	return cthw.Hooks.BeforeATRCommit(cthw.Ctx)
+	return cthw.Hooks.BeforeATRCommit(cthw.ctx)
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterATRCommit() error {
-	return cthw.Hooks.AfterATRCommit(cthw.Ctx)
+	return cthw.Hooks.AfterATRCommit(cthw.ctx)
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeDocCommitted(docID []byte) error {
-	return cthw.Hooks.BeforeDocCommitted(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeDocCommitted(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeRemovingDocDuringStagedInsert(docID []byte) error {
-	return cthw.Hooks.BeforeRemovingDocDuringStagedInsert(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeRemovingDocDuringStagedInsert(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeRollbackDeleteInserted(docID []byte) error {
-	return cthw.Hooks.BeforeRollbackDeleteInserted(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeRollbackDeleteInserted(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterDocCommittedBeforeSavingCAS(docID []byte) error {
-	return cthw.Hooks.AfterDocCommittedBeforeSavingCAS(cthw.Ctx, string(docID))
+	return cthw.Hooks.AfterDocCommittedBeforeSavingCAS(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterDocCommitted(docID []byte) error {
-	return cthw.Hooks.AfterDocCommitted(cthw.Ctx, string(docID))
+	return cthw.Hooks.AfterDocCommitted(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeStagedInsert(docID []byte) error {
-	return cthw.Hooks.BeforeStagedInsert(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeStagedInsert(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeStagedRemove(docID []byte) error {
-	return cthw.Hooks.BeforeStagedRemove(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeStagedRemove(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeStagedReplace(docID []byte) error {
-	return cthw.Hooks.BeforeStagedReplace(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeStagedReplace(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeDocRemoved(docID []byte) error {
-	return cthw.Hooks.BeforeDocRemoved(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeDocRemoved(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeDocRolledBack(docID []byte) error {
-	return cthw.Hooks.BeforeDocRolledBack(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeDocRolledBack(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterDocRemovedPreRetry(docID []byte) error {
-	return cthw.Hooks.AfterDocRemovedPreRetry(cthw.Ctx, string(docID))
+	return cthw.Hooks.AfterDocRemovedPreRetry(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterDocRemovedPostRetry(docID []byte) error {
-	return cthw.Hooks.AfterDocRemovedPostRetry(cthw.Ctx, string(docID))
+	return cthw.Hooks.AfterDocRemovedPostRetry(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterGetComplete(docID []byte) error {
-	return cthw.Hooks.AfterGetComplete(cthw.Ctx, string(docID))
+	return cthw.Hooks.AfterGetComplete(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterStagedReplaceComplete(docID []byte) error {
-	return cthw.Hooks.AfterStagedReplaceComplete(cthw.Ctx, string(docID))
+	return cthw.Hooks.AfterStagedReplaceComplete(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterStagedRemoveComplete(docID []byte) error {
-	return cthw.Hooks.BeforeDocCommitted(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeDocCommitted(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterStagedInsertComplete(docID []byte) error {
-	return cthw.Hooks.BeforeDocCommitted(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeDocCommitted(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterRollbackReplaceOrRemove(docID []byte) error {
-	return cthw.Hooks.BeforeDocCommitted(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeDocCommitted(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterRollbackDeleteInserted(docID []byte) error {
-	return cthw.Hooks.BeforeDocCommitted(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeDocCommitted(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeCheckATREntryForBlockingDoc(docID []byte) error {
-	return cthw.Hooks.BeforeCheckATREntryForBlockingDoc(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeCheckATREntryForBlockingDoc(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeDocGet(docID []byte) error {
-	return cthw.Hooks.BeforeDocGet(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeDocGet(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeGetDocInExistsDuringStagedInsert(docID []byte) error {
-	return cthw.Hooks.BeforeGetDocInExistsDuringStagedInsert(cthw.Ctx, string(docID))
+	return cthw.Hooks.BeforeGetDocInExistsDuringStagedInsert(cthw.ctx, string(docID))
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterDocsCommitted() error {
-	return cthw.Hooks.AfterDocsCommitted(cthw.Ctx)
+	return cthw.Hooks.AfterDocsCommitted(cthw.ctx)
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterDocsRemoved() error {
-	return cthw.Hooks.AfterDocsRemoved(cthw.Ctx)
+	return cthw.Hooks.AfterDocsRemoved(cthw.ctx)
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterATRPending() error {
-	return cthw.Hooks.AfterATRPending(cthw.Ctx)
+	return cthw.Hooks.AfterATRPending(cthw.ctx)
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeATRPending() error {
-	return cthw.Hooks.BeforeATRPending(cthw.Ctx)
+	return cthw.Hooks.BeforeATRPending(cthw.ctx)
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeATRComplete() error {
-	return cthw.Hooks.BeforeATRComplete(cthw.Ctx)
+	return cthw.Hooks.BeforeATRComplete(cthw.ctx)
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeATRRolledBack() error {
-	return cthw.Hooks.BeforeATRRolledBack(cthw.Ctx)
+	return cthw.Hooks.BeforeATRRolledBack(cthw.ctx)
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterATRComplete() error {
-	return cthw.Hooks.AfterATRComplete(cthw.Ctx)
+	return cthw.Hooks.AfterATRComplete(cthw.ctx)
 }
 
 func (cthw *coreTxnsHooksWrapper) BeforeATRAborted() error {
-	return cthw.Hooks.BeforeATRAborted(cthw.Ctx)
+	return cthw.Hooks.BeforeATRAborted(cthw.ctx)
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterATRAborted() error {
-	return cthw.Hooks.AfterATRAborted(cthw.Ctx)
+	return cthw.Hooks.AfterATRAborted(cthw.ctx)
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterATRRolledBack() error {
-	return cthw.Hooks.AfterATRRolledBack(cthw.Ctx)
+	return cthw.Hooks.AfterATRRolledBack(cthw.ctx)
 }
 
 func (cthw *coreTxnsHooksWrapper) RandomATRIDForVbucket(vbID []byte) (string, error) {
-	return cthw.Hooks.RandomATRIDForVbucket(cthw.Ctx, string(vbID))
+	return cthw.Hooks.RandomATRIDForVbucket(cthw.ctx, string(vbID))
 }
 
 func (cthw *coreTxnsHooksWrapper) HasExpiredClientSideHook(stage string, vbID []byte) (bool, error) {
-	return cthw.Hooks.HasExpiredClientSideHook(cthw.Ctx, stage, string(vbID))
+	return cthw.Hooks.HasExpiredClientSideHook(cthw.ctx, stage, string(vbID))
+}
+
+type noopHooksWrapper struct {
+}
+
+func (nhw *noopHooksWrapper) SetAttemptContext(ctx AttemptContext) {
+}
+
+func (nhw *noopHooksWrapper) BeforeATRCommit() error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterATRCommit() error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeDocCommitted(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeRemovingDocDuringStagedInsert(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeRollbackDeleteInserted(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterDocCommittedBeforeSavingCAS(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterDocCommitted(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeStagedInsert(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeStagedRemove(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeStagedReplace(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeDocRemoved(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeDocRolledBack(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterDocRemovedPreRetry(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterDocRemovedPostRetry(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterGetComplete(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterStagedReplaceComplete(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterStagedRemoveComplete(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterStagedInsertComplete(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterRollbackReplaceOrRemove(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterRollbackDeleteInserted(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeCheckATREntryForBlockingDoc(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeDocGet(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeGetDocInExistsDuringStagedInsert(docID []byte) error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterDocsCommitted() error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterDocsRemoved() error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterATRPending() error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeATRPending() error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeATRComplete() error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeATRRolledBack() error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterATRComplete() error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) BeforeATRAborted() error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterATRAborted() error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) AfterATRRolledBack() error {
+	return nil
+}
+
+func (nhw *noopHooksWrapper) RandomATRIDForVbucket(vbID []byte) (string, error) {
+	return "", nil
+}
+
+func (nhw *noopHooksWrapper) HasExpiredClientSideHook(stage string, vbID []byte) (bool, error) {
+	return false, nil
 }
