@@ -4,6 +4,13 @@ import (
 	coretxns "github.com/couchbaselabs/gocbcore-transactions"
 )
 
+type FailureReason uint8
+
+const (
+	FailureReasonFailed FailureReason = iota
+	FailureReasonExpired
+)
+
 var (
 	// ErrOther indicates an non-specific error has occured.
 	ErrOther = coretxns.ErrOther

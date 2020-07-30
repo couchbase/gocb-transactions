@@ -34,7 +34,9 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 
 	var hooksWrapper hooksWrapper
 	if config.Internal.Hooks == nil {
-		hooksWrapper = &noopHooksWrapper{}
+		hooksWrapper = &noopHooksWrapper{
+			DefaultHooks: coretxns.DefaultHooks{},
+		}
 	} else {
 		hooksWrapper = &coreTxnsHooksWrapper{
 			Hooks: config.Internal.Hooks.TransactionHooks(),
@@ -97,15 +99,50 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 			t.hooksWrapper.SetAttemptContext(attempt)
 		}
 
-		err = logicFn(&attempt)
+		lambdaErr := logicFn(&attempt)
 
-		if err != nil {
+		if lambdaErr != nil {
+			if attempt.rolledBack {
+				a := txn.Attempt()
+				attempts = append(attempts, Attempt{
+					ID:    a.ID,
+					State: AttemptState(a.State),
+				})
+				return nil, lambdaErr
+			}
+
+			err = attempt.Rollback()
+			if err != nil {
+				a := txn.Attempt()
+				attempts = append(attempts, Attempt{
+					ID:    a.ID,
+					State: AttemptState(a.State),
+				})
+				return nil, lambdaErr
+			}
+
 			a := txn.Attempt()
 			attempts = append(attempts, Attempt{
 				ID:    a.ID,
 				State: AttemptState(a.State),
 			})
-			return nil, err
+
+			state := &gocb.MutationState{}
+			for _, tok := range a.MutationState {
+				state.Internal().Add(tok.BucketName, tok.MutationToken)
+			}
+
+			if a.ShouldRetry {
+				continue
+			}
+
+			return &Result{
+				Attempts:          attempts,
+				TransactionID:     txn.ID(),
+				UnstagingComplete: a.State == coretxns.AttemptStateCompleted,
+				MutationState:     *state,
+				Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
+			}, nil
 		}
 
 		if attempt.committed {

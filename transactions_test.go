@@ -8,7 +8,6 @@ import (
 )
 
 func TestSomething(t *testing.T) {
-	gocb.SetLogger(gocb.VerboseStdioLogger())
 	cluster, err := gocb.Connect("couchbase://172.23.111.129", gocb.ClusterOptions{
 		Username: "Administrator",
 		Password: "password",
@@ -44,7 +43,7 @@ func TestSomething(t *testing.T) {
 		panic(err)
 	}
 
-	err = transactions.Run(func(ctx *AttemptContext) error {
+	_, err = transactions.Run(func(ctx *AttemptContext) error {
 		// Inserting a doc:
 		docID := "test-id"
 		testData := map[string]string{"name": "mike"}

@@ -17,10 +17,28 @@ type AttemptContext struct {
 	rolledBack bool
 }
 
+// Internal is used for internal dealings.
+// Internal: This should never be used and is not supported.
+func (c *AttemptContext) Internal() *InternalAttemptContext {
+	return &InternalAttemptContext{
+		ac: c,
+	}
+}
+
+// InternalAttemptContext is used for internal dealings.
+// Internal: This should never be used and is not supported.
+type InternalAttemptContext struct {
+	ac *AttemptContext
+}
+
+func (iac *InternalAttemptContext) Attempt() coretxns.Attempt {
+	return iac.ac.txn.Attempt()
+}
+
 // GetOptional will attempt to fetch a document, and return nil if it does not exist.
 func (c *AttemptContext) GetOptional(collection *gocb.Collection, id string) (*GetResult, error) {
 	res, err := c.Get(collection, id)
-	if err == ErrDocNotFound {
+	if errors.Is(err, ErrDocNotFound) {
 		return nil, nil
 	}
 	return res, err
