@@ -108,7 +108,22 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 					ID:    a.ID,
 					State: AttemptState(a.State),
 				})
-				return nil, lambdaErr
+
+				state := &gocb.MutationState{}
+				for _, tok := range a.MutationState {
+					state.Internal().Add(tok.BucketName, tok.MutationToken)
+				}
+
+				return nil, &TransactionFailedError{
+					cause: lambdaErr,
+					result: &Result{
+						Attempts:          attempts,
+						TransactionID:     txn.ID(),
+						UnstagingComplete: a.State == coretxns.AttemptStateCompleted,
+						MutationState:     *state,
+						Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
+					},
+				}
 			}
 
 			err = attempt.Rollback()
@@ -118,7 +133,22 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 					ID:    a.ID,
 					State: AttemptState(a.State),
 				})
-				return nil, lambdaErr
+
+				state := &gocb.MutationState{}
+				for _, tok := range a.MutationState {
+					state.Internal().Add(tok.BucketName, tok.MutationToken)
+				}
+
+				return nil, &TransactionFailedError{
+					cause: lambdaErr,
+					result: &Result{
+						Attempts:          attempts,
+						TransactionID:     txn.ID(),
+						UnstagingComplete: a.State == coretxns.AttemptStateCompleted,
+						MutationState:     *state,
+						Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
+					},
+				}
 			}
 
 			a := txn.Attempt()
@@ -173,7 +203,22 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				ID:    a.ID,
 				State: AttemptState(a.State),
 			})
-			return nil, err
+
+			state := &gocb.MutationState{}
+			for _, tok := range a.MutationState {
+				state.Internal().Add(tok.BucketName, tok.MutationToken)
+			}
+
+			return nil, &TransactionFailedError{
+				cause: err,
+				result: &Result{
+					Attempts:          attempts,
+					TransactionID:     txn.ID(),
+					UnstagingComplete: a.State == coretxns.AttemptStateCompleted,
+					MutationState:     *state,
+					Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
+				},
+			}
 		}
 
 		a := txn.Attempt()

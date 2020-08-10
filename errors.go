@@ -60,3 +60,20 @@ var (
 	// ErrUhOh is used for now to describe errors I yet know how to categorize
 	ErrUhOh = coretxns.ErrUhOh
 )
+
+type TransactionFailedError struct {
+	cause  error
+	result *Result
+}
+
+func (tfe *TransactionFailedError) Error() string {
+	return "transaction failed | " + tfe.cause.Error()
+}
+
+func (tfe *TransactionFailedError) Unwrap() error {
+	return tfe.cause
+}
+
+func (tfe *TransactionFailedError) Result() *Result {
+	return tfe.result
+}
