@@ -109,21 +109,7 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 					State: AttemptState(a.State),
 				})
 
-				state := &gocb.MutationState{}
-				for _, tok := range a.MutationState {
-					state.Internal().Add(tok.BucketName, tok.MutationToken)
-				}
-
-				return nil, &TransactionFailedError{
-					cause: lambdaErr,
-					result: &Result{
-						Attempts:          attempts,
-						TransactionID:     txn.ID(),
-						UnstagingComplete: a.State == coretxns.AttemptStateCompleted,
-						MutationState:     *state,
-						Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
-					},
-				}
+				return nil, createTransactionError(attempts, a, txn.ID(), lambdaErr)
 			}
 
 			err = attempt.Rollback()
@@ -134,21 +120,11 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 					State: AttemptState(a.State),
 				})
 
-				state := &gocb.MutationState{}
-				for _, tok := range a.MutationState {
-					state.Internal().Add(tok.BucketName, tok.MutationToken)
+				if a.ShouldRetry {
+					continue
 				}
 
-				return nil, &TransactionFailedError{
-					cause: lambdaErr,
-					result: &Result{
-						Attempts:          attempts,
-						TransactionID:     txn.ID(),
-						UnstagingComplete: a.State == coretxns.AttemptStateCompleted,
-						MutationState:     *state,
-						Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
-					},
-				}
+				return nil, createTransactionError(attempts, a, txn.ID(), lambdaErr)
 			}
 
 			a := txn.Attempt()
@@ -157,22 +133,11 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				State: AttemptState(a.State),
 			})
 
-			state := &gocb.MutationState{}
-			for _, tok := range a.MutationState {
-				state.Internal().Add(tok.BucketName, tok.MutationToken)
-			}
-
 			if a.ShouldRetry {
 				continue
 			}
 
-			return &Result{
-				Attempts:          attempts,
-				TransactionID:     txn.ID(),
-				UnstagingComplete: a.State == coretxns.AttemptStateCompleted,
-				MutationState:     *state,
-				Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
-			}, nil
+			return nil, createTransactionError(attempts, a, txn.ID(), lambdaErr)
 		}
 
 		if attempt.committed {
@@ -182,18 +147,7 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				State: AttemptState(a.State),
 			})
 
-			state := &gocb.MutationState{}
-			for _, tok := range a.MutationState {
-				state.Internal().Add(tok.BucketName, tok.MutationToken)
-			}
-
-			return &Result{
-				Attempts:          attempts,
-				TransactionID:     txn.ID(),
-				UnstagingComplete: a.State == coretxns.AttemptStateCompleted,
-				MutationState:     *state,
-				Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
-			}, nil
+			return createResult(attempts, a, txn.ID()), nil
 		}
 
 		err = attempt.Commit()
@@ -204,21 +158,7 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				State: AttemptState(a.State),
 			})
 
-			state := &gocb.MutationState{}
-			for _, tok := range a.MutationState {
-				state.Internal().Add(tok.BucketName, tok.MutationToken)
-			}
-
-			return nil, &TransactionFailedError{
-				cause: err,
-				result: &Result{
-					Attempts:          attempts,
-					TransactionID:     txn.ID(),
-					UnstagingComplete: a.State == coretxns.AttemptStateCompleted,
-					MutationState:     *state,
-					Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
-				},
-			}
+			return nil, createTransactionError(attempts, a, txn.ID(), err)
 		}
 
 		a := txn.Attempt()
@@ -227,18 +167,7 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 			State: AttemptState(a.State),
 		})
 
-		state := &gocb.MutationState{}
-		for _, tok := range a.MutationState {
-			state.Internal().Add(tok.BucketName, tok.MutationToken)
-		}
-
-		return &Result{
-			Attempts:          attempts,
-			TransactionID:     txn.ID(),
-			UnstagingComplete: a.State == coretxns.AttemptStateCompleted,
-			MutationState:     *state,
-			Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
-		}, nil
+		return createResult(attempts, a, txn.ID()), nil
 	}
 }
 

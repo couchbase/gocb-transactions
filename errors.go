@@ -1,6 +1,9 @@
 package transactions
 
 import (
+	"errors"
+
+	"github.com/couchbase/gocb/v2"
 	coretxns "github.com/couchbaselabs/gocbcore-transactions"
 )
 
@@ -61,6 +64,11 @@ var (
 	ErrUhOh = coretxns.ErrUhOh
 )
 
+type TransactionError interface {
+	Error() string
+	Result() *Result
+}
+
 type TransactionFailedError struct {
 	cause  error
 	result *Result
@@ -76,4 +84,46 @@ func (tfe *TransactionFailedError) Unwrap() error {
 
 func (tfe *TransactionFailedError) Result() *Result {
 	return tfe.result
+}
+
+type TransactionExpiredError struct {
+	result *Result
+}
+
+func (tfe *TransactionExpiredError) Error() string {
+	return ErrAttemptExpired.Error()
+}
+
+func (tfe *TransactionExpiredError) Unwrap() error {
+	return ErrAttemptExpired
+}
+
+func (tfe *TransactionExpiredError) Result() *Result {
+	return tfe.result
+}
+
+func createTransactionError(attempts []Attempt, attempt coretxns.Attempt, txnID string, err error) error {
+	state := &gocb.MutationState{}
+	for _, tok := range attempt.MutationState {
+		state.Internal().Add(tok.BucketName, tok.MutationToken)
+	}
+
+	result := &Result{
+		Attempts:          attempts,
+		TransactionID:     txnID,
+		UnstagingComplete: attempt.State == coretxns.AttemptStateCompleted,
+		MutationState:     *state,
+		Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
+	}
+
+	if errors.Is(err, coretxns.ErrAttemptExpired) {
+		return &TransactionExpiredError{
+			result: result,
+		}
+	} else {
+		return &TransactionFailedError{
+			cause:  err,
+			result: result,
+		}
+	}
 }

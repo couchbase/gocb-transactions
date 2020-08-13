@@ -49,3 +49,18 @@ type Result struct {
 		MutationTokens []gocb.MutationToken
 	}
 }
+
+func createResult(attempts []Attempt, attempt coretxns.Attempt, txnID string) *Result {
+	state := &gocb.MutationState{}
+	for _, tok := range attempt.MutationState {
+		state.Internal().Add(tok.BucketName, tok.MutationToken)
+	}
+
+	return &Result{
+		Attempts:          attempts,
+		TransactionID:     txnID,
+		UnstagingComplete: attempt.State == coretxns.AttemptStateCompleted,
+		MutationState:     *state,
+		Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
+	}
+}
