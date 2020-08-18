@@ -184,25 +184,25 @@ func (cthw *coreTxnsHooksWrapper) AfterStagedReplaceComplete(docID []byte, cb fu
 
 func (cthw *coreTxnsHooksWrapper) AfterStagedRemoveComplete(docID []byte, cb func(err error)) {
 	go func() {
-		cb(cthw.Hooks.BeforeDocCommitted(cthw.ctx, string(docID)))
+		cb(cthw.Hooks.AfterStagedRemoveComplete(cthw.ctx, string(docID)))
 	}()
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterStagedInsertComplete(docID []byte, cb func(err error)) {
 	go func() {
-		cb(cthw.Hooks.BeforeDocCommitted(cthw.ctx, string(docID)))
+		cb(cthw.Hooks.AfterStagedInsertComplete(cthw.ctx, string(docID)))
 	}()
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterRollbackReplaceOrRemove(docID []byte, cb func(err error)) {
 	go func() {
-		cb(cthw.Hooks.BeforeDocCommitted(cthw.ctx, string(docID)))
+		cb(cthw.Hooks.AfterRollbackReplaceOrRemove(cthw.ctx, string(docID)))
 	}()
 }
 
 func (cthw *coreTxnsHooksWrapper) AfterRollbackDeleteInserted(docID []byte, cb func(err error)) {
 	go func() {
-		cb(cthw.Hooks.BeforeDocCommitted(cthw.ctx, string(docID)))
+		cb(cthw.Hooks.AfterRollbackDeleteInserted(cthw.ctx, string(docID)))
 	}()
 }
 
