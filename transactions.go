@@ -99,11 +99,10 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 			t.hooksWrapper.SetAttemptContext(attempt)
 		}
 
-		lambdaErr := logicFn(&attempt)
-
+		lambdaErr := t.runLambda(logicFn, attempt)
 		if lambdaErr != nil {
-			if attempt.rolledBack {
-				a := txn.Attempt()
+			a := txn.Attempt()
+			if a.Internal.NoRollback {
 				attempts = append(attempts, Attempt{
 					ID:    a.ID,
 					State: AttemptState(a.State),
@@ -113,52 +112,20 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 			}
 
 			err = attempt.Rollback()
-			if err != nil {
-				a := txn.Attempt()
-				attempts = append(attempts, Attempt{
-					ID:    a.ID,
-					State: AttemptState(a.State),
-				})
-
-				if a.ShouldRetry {
-					continue
-				}
-
-				return nil, createTransactionError(attempts, a, txn.ID(), lambdaErr)
-			}
-
-			a := txn.Attempt()
+			a = txn.Attempt()
 			attempts = append(attempts, Attempt{
 				ID:    a.ID,
 				State: AttemptState(a.State),
 			})
+			if err != nil {
+				return nil, createTransactionError(attempts, a, txn.ID(), lambdaErr)
+			}
 
 			if a.ShouldRetry {
 				continue
 			}
 
 			return nil, createTransactionError(attempts, a, txn.ID(), lambdaErr)
-		}
-
-		if attempt.committed {
-			a := txn.Attempt()
-			attempts = append(attempts, Attempt{
-				ID:    a.ID,
-				State: AttemptState(a.State),
-			})
-
-			return createResult(attempts, a, txn.ID()), nil
-		}
-
-		err = attempt.Commit()
-		if err != nil {
-			a := txn.Attempt()
-			attempts = append(attempts, Attempt{
-				ID:    a.ID,
-				State: AttemptState(a.State),
-			})
-
-			return nil, createTransactionError(attempts, a, txn.ID(), err)
 		}
 
 		a := txn.Attempt()
@@ -169,6 +136,23 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 
 		return createResult(attempts, a, txn.ID()), nil
 	}
+}
+
+func (t *Transactions) runLambda(logicFn AttemptFunc, attempt AttemptContext) error {
+	err := logicFn(&attempt)
+	if err != nil {
+		return err
+	}
+
+	if !attempt.committed {
+		err := attempt.Commit()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+
 }
 
 // Commit will commit a previously prepared and serialized transaction.
