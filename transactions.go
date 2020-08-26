@@ -101,14 +101,26 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 
 		lambdaErr := t.runLambda(logicFn, attempt)
 		if lambdaErr != nil {
+			var txnErr *TransactionOperationFailedError
+			if !errors.As(lambdaErr, &txnErr) {
+				txnErr = &TransactionOperationFailedError{
+					errorCause: lambdaErr,
+					errorClass: coretxns.ErrorClassFailOther,
+				}
+			}
+
 			a := txn.Attempt()
-			if a.Internal.NoRollback {
+			if !txnErr.Rollback() {
 				attempts = append(attempts, Attempt{
 					ID:    a.ID,
 					State: AttemptState(a.State),
 				})
 
-				return nil, createTransactionError(attempts, a, txn.ID(), lambdaErr)
+				if txnErr.Retry() {
+					continue
+				}
+
+				return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
 			}
 
 			err = attempt.Rollback()
@@ -118,14 +130,22 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				State: AttemptState(a.State),
 			})
 			if err != nil {
-				return nil, createTransactionError(attempts, a, txn.ID(), lambdaErr)
+				var txnErr *TransactionOperationFailedError
+				if !errors.As(err, &txnErr) {
+					lambdaErr = &TransactionOperationFailedError{
+						errorCause: lambdaErr,
+						errorClass: coretxns.ErrorClassFailOther,
+					}
+				}
+
+				return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
 			}
 
-			if a.ShouldRetry {
+			if txnErr.Retry() {
 				continue
 			}
 
-			return nil, createTransactionError(attempts, a, txn.ID(), lambdaErr)
+			return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
 		}
 
 		a := txn.Attempt()

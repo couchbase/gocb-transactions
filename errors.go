@@ -7,13 +7,6 @@ import (
 	coretxns "github.com/couchbaselabs/gocbcore-transactions"
 )
 
-type FailureReason uint8
-
-const (
-	FailureReasonFailed FailureReason = iota
-	FailureReasonExpired
-)
-
 var (
 	// ErrOther indicates an non-specific error has occured.
 	ErrOther = coretxns.ErrOther
@@ -21,32 +14,14 @@ var (
 	// ErrTransient indicates a transient error occured which may succeed at a later point in time.
 	ErrTransient = coretxns.ErrTransient
 
-	// ErrDocNotFound indicates that a needed document was not found.
-	ErrDocNotFound = coretxns.ErrDocNotFound
-
-	// ErrDocAlreadyExists indicates that a document already existed unexpectedly.
-	ErrDocAlreadyExists = coretxns.ErrDocAlreadyExists
-
-	// ErrPathNotFound indicates that a needed path was not found.
-	ErrPathNotFound = coretxns.ErrPathNotFound
-
-	// ErrPathAlreadyExists indicates that a path already existed unexpectedly.
-	ErrPathAlreadyExists = coretxns.ErrPathAlreadyExists
-
 	// ErrWriteWriteConflict indicates that another transaction conflicted with this one.
 	ErrWriteWriteConflict = coretxns.ErrWriteWriteConflict
-
-	// ErrCasMismatch indicates that a cas mismatch occured during a store operation.
-	ErrCasMismatch = coretxns.ErrCasMismatch
 
 	// ErrHard indicates that an unrecoverable error occured.
 	ErrHard = coretxns.ErrHard
 
 	// ErrAmbiguous indicates that a failure occured but the outcome was not known.
 	ErrAmbiguous = coretxns.ErrAmbiguous
-
-	// ErrExpiry indicates that an operation expired before completion.
-	ErrExpiry = coretxns.ErrExpiry
 
 	// ErrAtrFull indicates that the ATR record was too full to accept a new mutation.
 	ErrAtrFull = coretxns.ErrAtrFull
@@ -62,6 +37,9 @@ var (
 
 	// ErrUhOh is used for now to describe errors I yet know how to categorize
 	ErrUhOh = coretxns.ErrUhOh
+
+	// ErrDocAlreadyInTransaction indicates that a document is already in a transaction.
+	ErrDocAlreadyInTransaction = coretxns.ErrDocAlreadyInTransaction
 )
 
 type TransactionError interface {
@@ -74,15 +52,18 @@ type TransactionFailedError struct {
 	result *Result
 }
 
-func (tfe *TransactionFailedError) Error() string {
+func (tfe TransactionFailedError) Error() string {
+	if tfe.cause == nil {
+		return "transaction failed"
+	}
 	return "transaction failed | " + tfe.cause.Error()
 }
 
-func (tfe *TransactionFailedError) Unwrap() error {
+func (tfe TransactionFailedError) Unwrap() error {
 	return tfe.cause
 }
 
-func (tfe *TransactionFailedError) Result() *Result {
+func (tfe TransactionFailedError) Result() *Result {
 	return tfe.result
 }
 
@@ -90,15 +71,15 @@ type TransactionExpiredError struct {
 	result *Result
 }
 
-func (tfe *TransactionExpiredError) Error() string {
+func (tfe TransactionExpiredError) Error() string {
 	return ErrAttemptExpired.Error()
 }
 
-func (tfe *TransactionExpiredError) Unwrap() error {
+func (tfe TransactionExpiredError) Unwrap() error {
 	return ErrAttemptExpired
 }
 
-func (tfe *TransactionExpiredError) Result() *Result {
+func (tfe TransactionExpiredError) Result() *Result {
 	return tfe.result
 }
 
@@ -116,14 +97,82 @@ func createTransactionError(attempts []Attempt, attempt coretxns.Attempt, txnID 
 		Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
 	}
 
-	if errors.Is(err, coretxns.ErrAttemptExpired) {
-		return &TransactionExpiredError{
-			result: result,
+	var txnErr *TransactionOperationFailedError
+	if errors.As(err, &txnErr) {
+		if txnErr.ToRaise() == coretxns.ErrorReasonTransactionExpired {
+			return &TransactionExpiredError{
+				result: result,
+			}
+		} else {
+			return &TransactionFailedError{
+				cause:  txnErr,
+				result: result,
+			}
 		}
 	} else {
-		return &TransactionFailedError{
-			cause:  err,
-			result: result,
+		return errors.New("an error was attempted to be returned which wasn't operation failed, this is a bug")
+	}
+}
+
+// ErrTransactionOperationFailed is used when a transaction operation fails.
+// Internal: This should never be used and is not supported.
+type TransactionOperationFailedError struct {
+	shouldRetry       bool
+	shouldNotRollback bool
+	errorCause        error
+	shouldRaise       coretxns.ErrorReason
+	errorClass        coretxns.ErrorClass
+}
+
+func (tfe TransactionOperationFailedError) Error() string {
+	if tfe.errorCause == nil {
+		return "transaction operation failed"
+	}
+	return "transaction operation failed | " + tfe.errorCause.Error()
+}
+
+func (tfe TransactionOperationFailedError) Unwrap() error {
+	return tfe.errorCause
+}
+
+// Retry signals whether a new attempt should be made at rollback.
+func (tfe TransactionOperationFailedError) Retry() bool {
+	return tfe.shouldRetry
+}
+
+// Rollback signals whether the attempt should be auto-rolled back.
+func (tfe TransactionOperationFailedError) Rollback() bool {
+	return !tfe.shouldNotRollback
+}
+
+// ToRaise signals which error type should be raised to the application.
+func (tfe TransactionOperationFailedError) ToRaise() coretxns.ErrorReason {
+	return tfe.shouldRaise
+}
+
+// ErrorClass is the class of error which caused this error.
+func (tfe *TransactionOperationFailedError) ErrorClass() coretxns.ErrorClass {
+	return tfe.errorClass
+}
+
+func createTransactionOperationFailedError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	var txnErr *coretxns.TransactionOperationFailedError
+	if errors.As(err, &txnErr) {
+		return &TransactionOperationFailedError{
+			shouldRetry:       txnErr.Retry(),
+			shouldNotRollback: !txnErr.Rollback(),
+			errorCause:        txnErr.Unwrap(),
+			shouldRaise:       txnErr.ToRaise(),
+			errorClass:        txnErr.ErrorClass(),
+		}
+	} else {
+		return &TransactionOperationFailedError{
+			errorCause: err,
+			errorClass: coretxns.ErrorClassFailOther,
 		}
 	}
 }

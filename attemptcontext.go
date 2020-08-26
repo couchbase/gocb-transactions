@@ -2,7 +2,8 @@ package transactions
 
 import (
 	"errors"
-	"log"
+
+	"github.com/couchbase/gocbcore/v9"
 
 	"github.com/couchbase/gocb/v2"
 	coretxns "github.com/couchbaselabs/gocbcore-transactions"
@@ -38,7 +39,7 @@ func (iac *InternalAttemptContext) Attempt() coretxns.Attempt {
 // GetOptional will attempt to fetch a document, and return nil if it does not exist.
 func (c *AttemptContext) GetOptional(collection *gocb.Collection, id string) (*GetResult, error) {
 	res, err := c.Get(collection, id)
-	if errors.Is(err, ErrDocNotFound) {
+	if errors.Is(err, gocbcore.ErrDocumentNotFound) {
 		return nil, nil
 	}
 	return res, err
@@ -68,15 +69,13 @@ func (c *AttemptContext) Get(collection *gocb.Collection, id string) (resOut *Ge
 
 				coreRes: res,
 			}
-
-			log.Printf("DOC:%v", resOut)
 		}
-		errOut = err
+		errOut = createTransactionOperationFailedError(err)
 		waitCh <- struct{}{}
 	})
 	if err != nil {
 		resOut = nil
-		errOut = err
+		errOut = createTransactionOperationFailedError(err)
 		return
 	}
 	<-waitCh
@@ -110,15 +109,13 @@ func (c *AttemptContext) Replace(doc *GetResult, value interface{}) (resOut *Get
 
 				coreRes: res,
 			}
-
-			log.Printf("DOC:%v", resOut)
 		}
-		errOut = err
+		errOut = createTransactionOperationFailedError(err)
 		waitCh <- struct{}{}
 	})
 	if err != nil {
 		resOut = nil
-		errOut = err
+		errOut = createTransactionOperationFailedError(err)
 		return
 	}
 	<-waitCh
@@ -157,15 +154,13 @@ func (c *AttemptContext) Insert(collection *gocb.Collection, id string, value in
 
 				coreRes: res,
 			}
-
-			log.Printf("DOC:%v", resOut)
 		}
-		errOut = err
+		errOut = createTransactionOperationFailedError(err)
 		waitCh <- struct{}{}
 	})
 	if err != nil {
 		resOut = nil
-		errOut = err
+		errOut = createTransactionOperationFailedError(err)
 		return
 	}
 	<-waitCh
@@ -179,11 +174,11 @@ func (c *AttemptContext) Remove(doc *GetResult) (errOut error) {
 	err := c.txn.Remove(coretxns.RemoveOptions{
 		Document: doc.coreRes,
 	}, func(res *coretxns.GetResult, err error) {
-		errOut = err
+		errOut = createTransactionOperationFailedError(err)
 		waitCh <- struct{}{}
 	})
 	if err != nil {
-		errOut = err
+		errOut = createTransactionOperationFailedError(err)
 		return
 	}
 	<-waitCh
@@ -196,11 +191,11 @@ func (c *AttemptContext) Commit() (errOut error) {
 	c.committed = true
 	waitCh := make(chan struct{}, 1)
 	err := c.txn.Commit(func(err error) {
-		errOut = err
+		errOut = createTransactionOperationFailedError(err)
 		waitCh <- struct{}{}
 	})
 	if err != nil {
-		errOut = err
+		errOut = createTransactionOperationFailedError(err)
 		return
 	}
 	<-waitCh
@@ -212,11 +207,11 @@ func (c *AttemptContext) Rollback() (errOut error) {
 	c.rolledBack = true
 	waitCh := make(chan struct{}, 1)
 	err := c.txn.Rollback(func(err error) {
-		errOut = err
+		errOut = createTransactionOperationFailedError(err)
 		waitCh <- struct{}{}
 	})
 	if err != nil {
-		errOut = err
+		errOut = createTransactionOperationFailedError(err)
 		return
 	}
 	<-waitCh
