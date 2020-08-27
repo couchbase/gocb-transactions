@@ -38,6 +38,7 @@ type TransactionHooks interface {
 	BeforeATRAborted(ctx AttemptContext) error
 	AfterATRAborted(ctx AttemptContext) error
 	AfterATRRolledBack(ctx AttemptContext) error
+	BeforeATRCommitAmbiguityResolution(ctx AttemptContext) error
 	RandomATRIDForVbucket(ctx AttemptContext, vbID string) (string, error)
 	HasExpiredClientSideHook(ctx AttemptContext, stage string, vbID string) (bool, error)
 }
@@ -281,6 +282,12 @@ func (cthw *coreTxnsHooksWrapper) AfterATRAborted(cb func(err error)) {
 func (cthw *coreTxnsHooksWrapper) AfterATRRolledBack(cb func(err error)) {
 	go func() {
 		cb(cthw.Hooks.AfterATRRolledBack(cthw.ctx))
+	}()
+}
+
+func (cthw *coreTxnsHooksWrapper) BeforeATRCommitAmbiguityResolution(cb func(err error)) {
+	go func() {
+		cb(cthw.Hooks.BeforeATRCommitAmbiguityResolution(cthw.ctx))
 	}()
 }
 

@@ -40,12 +40,10 @@ var (
 
 	// ErrDocAlreadyInTransaction indicates that a document is already in a transaction.
 	ErrDocAlreadyInTransaction = coretxns.ErrDocAlreadyInTransaction
-)
 
-type TransactionError interface {
-	Error() string
-	Result() *Result
-}
+	// ErrTransactionAbortedExternally indicates the transaction was aborted externally.
+	ErrTransactionAbortedExternally = coretxns.ErrTransactionAbortedExternally
+)
 
 type TransactionFailedError struct {
 	cause  error
@@ -63,6 +61,7 @@ func (tfe TransactionFailedError) Unwrap() error {
 	return tfe.cause
 }
 
+// Internal: This should never be used and is not supported.
 func (tfe TransactionFailedError) Result() *Result {
 	return tfe.result
 }
@@ -79,7 +78,50 @@ func (tfe TransactionExpiredError) Unwrap() error {
 	return ErrAttemptExpired
 }
 
+// Internal: This should never be used and is not supported.
 func (tfe TransactionExpiredError) Result() *Result {
+	return tfe.result
+}
+
+type TransactionCommitAmbiguousError struct {
+	cause  error
+	result *Result
+}
+
+func (tfe TransactionCommitAmbiguousError) Error() string {
+	if tfe.cause == nil {
+		return "transaction commit ambiguous"
+	}
+	return "transaction failed | " + tfe.cause.Error()
+}
+
+func (tfe TransactionCommitAmbiguousError) Unwrap() error {
+	return tfe.cause
+}
+
+// Internal: This should never be used and is not supported.
+func (tfe TransactionCommitAmbiguousError) Result() *Result {
+	return tfe.result
+}
+
+type TransactionFailedPostCommit struct {
+	cause  error
+	result *Result
+}
+
+func (tfe TransactionFailedPostCommit) Error() string {
+	if tfe.cause == nil {
+		return "transaction failed post commit"
+	}
+	return "transaction failed | " + tfe.cause.Error()
+}
+
+func (tfe TransactionFailedPostCommit) Unwrap() error {
+	return tfe.cause
+}
+
+// Internal: This should never be used and is not supported.
+func (tfe TransactionFailedPostCommit) Result() *Result {
 	return tfe.result
 }
 
@@ -99,11 +141,22 @@ func createTransactionError(attempts []Attempt, attempt coretxns.Attempt, txnID 
 
 	var txnErr *TransactionOperationFailedError
 	if errors.As(err, &txnErr) {
-		if txnErr.ToRaise() == coretxns.ErrorReasonTransactionExpired {
+		switch txnErr.ToRaise() {
+		case coretxns.ErrorReasonTransactionExpired:
 			return &TransactionExpiredError{
 				result: result,
 			}
-		} else {
+		case coretxns.ErrorReasonTransactionCommitAmbiguous:
+			return &TransactionCommitAmbiguousError{
+				cause:  txnErr,
+				result: result,
+			}
+		case coretxns.ErrorReasonTransactionFailedPostCommit:
+			return &TransactionCommitAmbiguousError{
+				cause:  txnErr,
+				result: result,
+			}
+		default:
 			return &TransactionFailedError{
 				cause:  txnErr,
 				result: result,

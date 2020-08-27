@@ -110,13 +110,13 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 			}
 
 			a := txn.Attempt()
-			if !txnErr.Rollback() {
+			if !txnErr.Rollback() || attempt.rolledBack {
 				attempts = append(attempts, Attempt{
 					ID:    a.ID,
 					State: AttemptState(a.State),
 				})
 
-				if txnErr.Retry() {
+				if txnErr.Retry() && !a.Internal.Expired {
 					continue
 				}
 
@@ -131,8 +131,8 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 			})
 			if err != nil {
 				var txnErr *TransactionOperationFailedError
-				if !errors.As(err, &txnErr) {
-					lambdaErr = &TransactionOperationFailedError{
+				if !errors.As(lambdaErr, &txnErr) {
+					txnErr = &TransactionOperationFailedError{
 						errorCause: lambdaErr,
 						errorClass: coretxns.ErrorClassFailOther,
 					}
@@ -141,7 +141,7 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
 			}
 
-			if txnErr.Retry() {
+			if txnErr.Retry() && !a.Internal.Expired {
 				continue
 			}
 
@@ -164,7 +164,7 @@ func (t *Transactions) runLambda(logicFn AttemptFunc, attempt AttemptContext) er
 		return err
 	}
 
-	if !attempt.committed {
+	if !attempt.committed && !attempt.rolledBack {
 		err := attempt.Commit()
 		if err != nil {
 			return err
