@@ -2,6 +2,7 @@ package transactions
 
 import (
 	"errors"
+	"math"
 	"time"
 
 	gocb "github.com/couchbase/gocb/v2"
@@ -83,6 +84,22 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 		return nil, err
 	}
 
+	retries := 0
+	backoffCalc := func() time.Duration {
+		var max float64 = 100000000 // 100 Milliseconds
+		var min float64 = 1000000   // 1 Millisecond
+		retries++
+		backoff := min * (math.Pow(2, float64(retries)))
+
+		if backoff > max {
+			backoff = max
+		}
+		if backoff < min {
+			backoff = min
+		}
+
+		return time.Duration(backoff)
+	}
 	var attempts []Attempt
 	for {
 		err = txn.NewAttempt()
@@ -117,6 +134,7 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				})
 
 				if txnErr.Retry() && !a.Internal.Expired {
+					time.Sleep(backoffCalc())
 					continue
 				}
 
@@ -142,6 +160,7 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 			}
 
 			if txnErr.Retry() && !a.Internal.Expired {
+				time.Sleep(backoffCalc())
 				continue
 			}
 
