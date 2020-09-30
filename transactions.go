@@ -130,7 +130,15 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 			if !txnErr.Rollback() || attempt.rolledBack {
 				attempts = append(attempts, newAttempt(a))
 
-				if txnErr.Retry() && !a.Internal.Expired {
+				if a.Internal.Expired {
+					return nil, createTransactionError(attempts, a, txn.ID(), &TransactionOperationFailedError{
+						errorCause:  coretxns.ErrAttemptExpired,
+						errorClass:  coretxns.ErrorClassFailExpiry,
+						shouldRaise: coretxns.ErrorReasonTransactionExpired,
+					})
+				}
+
+				if txnErr.Retry() {
 					time.Sleep(backoffCalc())
 					continue
 				}
@@ -153,7 +161,15 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
 			}
 
-			if txnErr.Retry() && !a.Internal.Expired {
+			if a.Internal.Expired {
+				return nil, createTransactionError(attempts, a, txn.ID(), &TransactionOperationFailedError{
+					errorCause:  coretxns.ErrAttemptExpired,
+					errorClass:  coretxns.ErrorClassFailExpiry,
+					shouldRaise: coretxns.ErrorReasonTransactionExpired,
+				})
+			}
+
+			if txnErr.Retry() {
 				time.Sleep(backoffCalc())
 				continue
 			}
