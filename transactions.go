@@ -128,10 +128,7 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 
 			a := txn.Attempt()
 			if !txnErr.Rollback() || attempt.rolledBack {
-				attempts = append(attempts, Attempt{
-					ID:    a.ID,
-					State: AttemptState(a.State),
-				})
+				attempts = append(attempts, newAttempt(a))
 
 				if txnErr.Retry() && !a.Internal.Expired {
 					time.Sleep(backoffCalc())
@@ -143,10 +140,7 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 
 			err = attempt.Rollback()
 			a = txn.Attempt()
-			attempts = append(attempts, Attempt{
-				ID:    a.ID,
-				State: AttemptState(a.State),
-			})
+			attempts = append(attempts, newAttempt(a))
 			if err != nil {
 				var txnErr *TransactionOperationFailedError
 				if !errors.As(lambdaErr, &txnErr) {
@@ -168,10 +162,7 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 		}
 
 		a := txn.Attempt()
-		attempts = append(attempts, Attempt{
-			ID:    a.ID,
-			State: AttemptState(a.State),
-		})
+		attempts = append(attempts, newAttempt(a))
 
 		return createResult(attempts, a, txn.ID()), nil
 	}

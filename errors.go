@@ -43,6 +43,9 @@ var (
 
 	// ErrTransactionAbortedExternally indicates the transaction was aborted externally.
 	ErrTransactionAbortedExternally = coretxns.ErrTransactionAbortedExternally
+
+	// ErrTransactionAbortedExternally indicates the transaction was aborted externally.
+	ErrPreviousOperationFailed = coretxns.ErrPreviousOperationFailed
 )
 
 type TransactionFailedError struct {

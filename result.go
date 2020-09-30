@@ -19,8 +19,23 @@ const (
 // Attempt represents a singular attempt at executing a transaction.  A
 // transaction may require multiple attempts before being successful.
 type Attempt struct {
-	State AttemptState
-	ID    string
+	State             AttemptState
+	ID                string
+	AtrID             string
+	AtrBucketName     string
+	AtrScopeName      string
+	AtrCollectionName string
+}
+
+func newAttempt(a coretxns.Attempt) Attempt {
+	return Attempt{
+		ID:                a.ID,
+		State:             AttemptState(a.State),
+		AtrID:             string(a.AtrID),
+		AtrBucketName:     a.AtrBucketName,
+		AtrScopeName:      a.AtrScopeName,
+		AtrCollectionName: a.AtrCollectionName,
+	}
 }
 
 // Result represents the result of a transaction which was executed.
