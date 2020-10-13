@@ -155,7 +155,7 @@ func createTransactionError(attempts []Attempt, attempt coretxns.Attempt, txnID 
 				result: result,
 			}
 		case coretxns.ErrorReasonTransactionFailedPostCommit:
-			return &TransactionCommitAmbiguousError{
+			return &TransactionFailedPostCommit{
 				cause:  txnErr,
 				result: result,
 			}
