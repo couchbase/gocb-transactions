@@ -43,16 +43,16 @@ type TransactionHooks interface {
 	HasExpiredClientSideHook(ctx AttemptContext, stage string, vbID string) (bool, error)
 }
 
-// CleanUpHooks provides a number of internal hooks used for testing.
+// CleanupHooks provides a number of internal hooks used for testing.
 // Internal: This should never be used and is not supported.
-type CleanUpHooks interface {
+type CleanupHooks interface {
 	BeforeATRGet(id string) error
 	BeforeDocGet(id string) error
 	BeforeRemoveLinks(id string) error
 	BeforeCommitDoc(id string) error
 	BeforeRemoveDocStagedForRemoval(id string) error
 	BeforeRemoveDoc(id string) error
-	BeforeATRRemove() error
+	BeforeATRRemove(id string) error
 }
 
 // ClientRecordHooks provides a number of internal hooks used for testing.
@@ -65,17 +65,13 @@ type ClientRecordHooks interface {
 	BeforeUpdateRecord() error
 }
 
-// Hooks provides a number of internal hooks used for testing.
-// Internal: This should never be used and is not supported.
-type Hooks interface {
-	TransactionHooks() TransactionHooks
-	CleanUpHooks() CleanUpHooks
-	ClientRecordHooks() ClientRecordHooks
-}
-
 type hooksWrapper interface {
 	SetAttemptContext(ctx AttemptContext)
 	coretxns.TransactionHooks
+}
+
+type cleanupHooksWrapper interface {
+	coretxns.CleanUpHooks
 }
 
 type coreTxnsHooksWrapper struct {
@@ -303,9 +299,60 @@ func (cthw *coreTxnsHooksWrapper) HasExpiredClientSideHook(stage string, vbID []
 	}()
 }
 
+type coreTxnsCleanupHooksWrapper struct {
+	ctx          AttemptContext
+	CleanupHooks CleanupHooks
+}
+
+func (cthw *coreTxnsCleanupHooksWrapper) BeforeATRGet(id []byte, cb func(error)) {
+	go func() {
+		cb(cthw.CleanupHooks.BeforeATRGet(string(id)))
+	}()
+}
+
+func (cthw *coreTxnsCleanupHooksWrapper) BeforeDocGet(id []byte, cb func(error)) {
+	go func() {
+		cb(cthw.CleanupHooks.BeforeDocGet(string(id)))
+	}()
+}
+
+func (cthw *coreTxnsCleanupHooksWrapper) BeforeRemoveLinks(id []byte, cb func(error)) {
+	go func() {
+		cb(cthw.CleanupHooks.BeforeRemoveLinks(string(id)))
+	}()
+}
+
+func (cthw *coreTxnsCleanupHooksWrapper) BeforeCommitDoc(id []byte, cb func(error)) {
+	go func() {
+		cb(cthw.CleanupHooks.BeforeCommitDoc(string(id)))
+	}()
+}
+
+func (cthw *coreTxnsCleanupHooksWrapper) BeforeRemoveDocStagedForRemoval(id []byte, cb func(error)) {
+	go func() {
+		cb(cthw.CleanupHooks.BeforeRemoveDocStagedForRemoval(string(id)))
+	}()
+}
+
+func (cthw *coreTxnsCleanupHooksWrapper) BeforeRemoveDoc(id []byte, cb func(error)) {
+	go func() {
+		cb(cthw.CleanupHooks.BeforeRemoveDoc(string(id)))
+	}()
+}
+
+func (cthw *coreTxnsCleanupHooksWrapper) BeforeATRRemove(id []byte, cb func(error)) {
+	go func() {
+		cb(cthw.CleanupHooks.BeforeATRRemove(string(id)))
+	}()
+}
+
 type noopHooksWrapper struct {
 	coretxns.DefaultHooks
 }
 
 func (nhw *noopHooksWrapper) SetAttemptContext(ctx AttemptContext) {
+}
+
+type noopCleanupHooksWrapper struct {
+	coretxns.DefaultCleanupHooks
 }

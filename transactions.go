@@ -2,6 +2,7 @@ package transactions
 
 import (
 	"errors"
+	"github.com/couchbase/gocbcore/v9"
 	"math"
 	"time"
 
@@ -16,8 +17,9 @@ type Transactions struct {
 	cluster    *gocb.Cluster
 	transcoder gocb.Transcoder
 
-	txns         *coretxns.Transactions
-	hooksWrapper hooksWrapper
+	txns                *coretxns.Transactions
+	hooksWrapper        hooksWrapper
+	cleanupHooksWrapper cleanupHooksWrapper
 }
 
 // Init will initialize the transactions library and return a Transactions
@@ -40,26 +42,50 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 		}
 	} else {
 		hooksWrapper = &coreTxnsHooksWrapper{
-			Hooks: config.Internal.Hooks.TransactionHooks(),
+			Hooks: config.Internal.Hooks,
 		}
+	}
+
+	var cleanupHooksWrapper cleanupHooksWrapper
+	if config.Internal.Hooks == nil {
+		cleanupHooksWrapper = &noopCleanupHooksWrapper{
+			DefaultCleanupHooks: coretxns.DefaultCleanupHooks{},
+		}
+	} else {
+		cleanupHooksWrapper = &coreTxnsCleanupHooksWrapper{
+			CleanupHooks: config.Internal.CleanupHooks,
+		}
+	}
+
+	t := &Transactions{
+		cluster:             cluster,
+		config:              *config,
+		transcoder:          gocb.NewJSONTranscoder(),
+		hooksWrapper:        hooksWrapper,
+		cleanupHooksWrapper: cleanupHooksWrapper,
 	}
 
 	txns, err := coretxns.Init(&coretxns.Config{
 		DurabilityLevel: coretxns.DurabilityLevel(config.DurabilityLevel),
 		KeyValueTimeout: config.KeyValueTimeout,
-		Internal:        struct{ Hooks coretxns.TransactionHooks }{Hooks: hooksWrapper},
+		Internal: struct {
+			Hooks        coretxns.TransactionHooks
+			CleanUpHooks coretxns.CleanUpHooks
+		}{
+			Hooks:        hooksWrapper,
+			CleanUpHooks: cleanupHooksWrapper,
+		},
+		BucketAgentProvider:   t.agentProvider,
+		CleanupClientAttempts: config.CleanupClientAttempts,
+		CleanupQueueSize:      config.CleanupQueueSize,
+		ExpirationTime:        config.ExpirationTime,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &Transactions{
-		cluster:      cluster,
-		config:       *config,
-		txns:         txns,
-		transcoder:   gocb.NewJSONTranscoder(),
-		hooksWrapper: hooksWrapper,
-	}, nil
+	t.txns = txns
+	return t, nil
 }
 
 // Config returns the config that was used during the initialization
@@ -221,4 +247,49 @@ func (t *Transactions) Rollback(serialized SerializedContext, perConfig *PerTran
 // background tasks associated with it.
 func (t *Transactions) Close() error {
 	return errors.New("not implemented")
+}
+
+func (t *Transactions) agentProvider(bucketName string) (*gocbcore.Agent, error) {
+	b := t.cluster.Bucket(bucketName)
+	return b.Internal().IORouter()
+}
+
+// TransactionsInternal exposes internal methods that are useful for testing and/or
+// other forms of internal use.
+type TransactionsInternal struct {
+	parent *Transactions
+}
+
+// Internal returns an TransactionsInternal object which can be used for specialized
+// internal use cases.
+func (t *Transactions) Internal() *TransactionsInternal {
+	return &TransactionsInternal{
+		parent: t,
+	}
+}
+
+// ForceCleanupQueue forces the transactions client cleanup queue to drain without waiting for expirations.
+func (t *TransactionsInternal) ForceCleanupQueue() []CleanupAttempt {
+	waitCh := make(chan []coretxns.CleanupAttempt, 1)
+	t.parent.txns.Internal().ForceCleanupQueue(func(attempts []coretxns.CleanupAttempt) {
+		waitCh <- attempts
+	})
+	coreAttempts := <-waitCh
+
+	var attempts []CleanupAttempt
+	for _, attempt := range coreAttempts {
+		attempts = append(attempts, cleanupAttemptFromCore(attempt))
+	}
+
+	return attempts
+}
+
+// CleanupQueueLength returns the current length of the client cleanup queue.
+func (t *TransactionsInternal) CleanupQueueLength() int32 {
+	return t.parent.txns.Internal().CleanupQueueLength()
+}
+
+// ClientCleanupEnabled returns whether the client cleanup process is enabled.
+func (t *TransactionsInternal) ClientCleanupEnabled() bool {
+	return t.parent.txns.Config().CleanupClientAttempts
 }

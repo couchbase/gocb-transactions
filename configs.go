@@ -44,14 +44,18 @@ type Config struct {
 	// to cleanup any ‘lost’ transaction attempts.
 	CleanupLostAttempts bool
 
+	// CleanupQueueSize controls the maximum queue size for the cleanup thread.
+	CleanupQueueSize uint32
+
 	// Internal specifies a set of options for internal use.
 	// Internal: This should never be used and is not supported.
 	Internal struct {
-		Hooks Hooks
+		Hooks        TransactionHooks
+		CleanupHooks CleanupHooks
 	}
 }
 
-//PerTransactionConfig specifies options which can be overriden on a per transaction basis.
+// PerTransactionConfig specifies options which can be overriden on a per transaction basis.
 type PerTransactionConfig struct {
 	// DurabilityLevel specifies the durability level that should be used
 	// for all write operations performed by this transaction.
