@@ -69,11 +69,13 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 		DurabilityLevel: coretxns.DurabilityLevel(config.DurabilityLevel),
 		KeyValueTimeout: config.KeyValueTimeout,
 		Internal: struct {
-			Hooks        coretxns.TransactionHooks
-			CleanUpHooks coretxns.CleanUpHooks
+			Hooks           coretxns.TransactionHooks
+			CleanUpHooks    coretxns.CleanUpHooks
+			SerialUnstaging bool
 		}{
-			Hooks:        hooksWrapper,
-			CleanUpHooks: cleanupHooksWrapper,
+			Hooks:           hooksWrapper,
+			CleanUpHooks:    cleanupHooksWrapper,
+			SerialUnstaging: config.Internal.SerialUnstaging,
 		},
 		BucketAgentProvider:   t.agentProvider,
 		CleanupClientAttempts: config.CleanupClientAttempts,

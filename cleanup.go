@@ -64,11 +64,13 @@ func NewCleaner(agentProvider coretxns.BucketAgentProviderFn, config *Config) Cl
 			DurabilityLevel: coretxns.DurabilityLevel(config.DurabilityLevel),
 			KeyValueTimeout: config.KeyValueTimeout,
 			Internal: struct {
-				Hooks        coretxns.TransactionHooks
-				CleanUpHooks coretxns.CleanUpHooks
+				Hooks           coretxns.TransactionHooks
+				CleanUpHooks    coretxns.CleanUpHooks
+				SerialUnstaging bool
 			}{
-				Hooks:        nil,
-				CleanUpHooks: cleanupHooksWrapper,
+				Hooks:           nil,
+				CleanUpHooks:    cleanupHooksWrapper,
+				SerialUnstaging: config.Internal.SerialUnstaging,
 			},
 			CleanupQueueSize:    config.CleanupQueueSize,
 			BucketAgentProvider: agentProvider,
