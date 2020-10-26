@@ -158,13 +158,18 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 			if !txnErr.Rollback() || attempt.rolledBack {
 				attempts = append(attempts, newAttempt(a))
 
-				if errors.Is(txnErr, coretxns.ErrAttemptExpired) {
+				isFailedPostCommit := txnErr.shouldRaise == coretxns.ErrorReasonTransactionFailedPostCommit
+				if errors.Is(txnErr, coretxns.ErrAttemptExpired) && !isFailedPostCommit {
 					return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
 				}
 
 				if txnErr.Retry() {
 					time.Sleep(backoffCalc())
 					continue
+				}
+
+				if isFailedPostCommit {
+					return createResult(attempts, a, txn.ID()), nil
 				}
 
 				return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
@@ -185,7 +190,8 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
 			}
 
-			if a.Internal.Expired {
+			isFailedPostCommit := txnErr.shouldRaise == coretxns.ErrorReasonTransactionFailedPostCommit
+			if a.Internal.Expired && !isFailedPostCommit {
 				return nil, createTransactionError(attempts, a, txn.ID(), &TransactionOperationFailedError{
 					errorCause:  coretxns.ErrAttemptExpired,
 					errorClass:  coretxns.ErrorClassFailExpiry,
@@ -196,6 +202,10 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 			if txnErr.Retry() {
 				time.Sleep(backoffCalc())
 				continue
+			}
+
+			if isFailedPostCommit {
+				return createResult(attempts, a, txn.ID()), nil
 			}
 
 			return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
