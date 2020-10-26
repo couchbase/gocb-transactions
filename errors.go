@@ -134,10 +134,12 @@ func createTransactionError(attempts []Attempt, attempt coretxns.Attempt, txnID 
 		state.Internal().Add(tok.BucketName, tok.MutationToken)
 	}
 
+	lastAttempt := attempts[len(attempts)-1]
+
 	result := &Result{
 		Attempts:          attempts,
 		TransactionID:     txnID,
-		UnstagingComplete: attempt.State == coretxns.AttemptStateCompleted,
+		UnstagingComplete: lastAttempt.UnstagingComplete,
 		MutationState:     *state,
 		Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
 	}

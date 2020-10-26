@@ -25,6 +25,7 @@ type Attempt struct {
 	AtrBucketName     string
 	AtrScopeName      string
 	AtrCollectionName string
+	UnstagingComplete bool
 }
 
 func newAttempt(a coretxns.Attempt) Attempt {
@@ -35,6 +36,7 @@ func newAttempt(a coretxns.Attempt) Attempt {
 		AtrBucketName:     a.AtrBucketName,
 		AtrScopeName:      a.AtrScopeName,
 		AtrCollectionName: a.AtrCollectionName,
+		UnstagingComplete: a.UnstagingComplete,
 	}
 }
 
@@ -74,7 +76,7 @@ func createResult(attempts []Attempt, attempt coretxns.Attempt, txnID string) *R
 	return &Result{
 		Attempts:          attempts,
 		TransactionID:     txnID,
-		UnstagingComplete: attempt.State == coretxns.AttemptStateCompleted,
+		UnstagingComplete: attempt.UnstagingComplete,
 		MutationState:     *state,
 		Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
 	}

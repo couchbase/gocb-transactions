@@ -165,11 +165,6 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 					continue
 				}
 
-				if txnErr.shouldRaise == coretxns.ErrorReasonTransactionFailedPostCommit {
-					// TODO: set unstagingComplete to false somewhere
-					return createResult(attempts, a, txn.ID()), nil
-				}
-
 				return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
 			}
 
@@ -199,11 +194,6 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 			if txnErr.Retry() {
 				time.Sleep(backoffCalc())
 				continue
-			}
-
-			if txnErr.shouldRaise == coretxns.ErrorReasonTransactionFailedPostCommit {
-				// TODO: set unstagingComplete to false somewhere
-				return createResult(attempts, a, txn.ID()), nil
 			}
 
 			return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
