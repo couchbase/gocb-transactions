@@ -1,21 +1,29 @@
 package transactions
 
-import "time"
+import (
+	coretxns "github.com/couchbaselabs/gocbcore-transactions"
+	"time"
+)
 
 // DurabilityLevel specifies the level of synchronous replication to use.
 type DurabilityLevel uint8
 
 const (
-	// DurabilityLevelMajority specifies that a mutation must be replicated (held in memory) to a majority of nodes.
-	DurabilityLevelMajority DurabilityLevel = iota + 1
+	// DurabilityLevelUnknown indicates to use the default level.
+	DurabilityLevelUnknown = DurabilityLevel(coretxns.DurabilityLevelUnknown)
 
-	// DurabilityLevelMajorityAndPersistOnMaster specifies that a mutation must be replicated (held in memory) to a
-	// majority of nodes and also persisted (written to disk) on the active node.
-	DurabilityLevelMajorityAndPersistOnMaster
+	// DurabilityLevelNone indicates that no durability is needed.
+	DurabilityLevelNone = DurabilityLevel(coretxns.DurabilityLevelNone)
 
-	// DurabilityLevelPersistToMajority specifies that a mutation must be persisted (written to disk) to a majority
-	// of nodes.
-	DurabilityLevelPersistToMajority
+	// DurabilityLevelMajority indicates the operation must be replicated to the majority.
+	DurabilityLevelMajority = DurabilityLevel(coretxns.DurabilityLevelMajority)
+
+	// DurabilityLevelMajorityAndPersistToActive indicates the operation must be replicated
+	// to the majority and persisted to the active server.
+	DurabilityLevelMajorityAndPersistToActive = DurabilityLevel(coretxns.DurabilityLevelMajorityAndPersistToActive)
+
+	// DurabilityLevelPersistToMajority indicates the operation must be persisted to the active server.
+	DurabilityLevelPersistToMajority = DurabilityLevel(coretxns.DurabilityLevelPersistToMajority)
 )
 
 // Config specifies various tunable options related to transactions.
