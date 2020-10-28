@@ -248,7 +248,7 @@ func (t *Transactions) Rollback(serialized SerializedContext, perConfig *PerTran
 // Close will shut down this Transactions object, shutting down all
 // background tasks associated with it.
 func (t *Transactions) Close() error {
-	return errors.New("not implemented")
+	return t.txns.Close()
 }
 
 func (t *Transactions) agentProvider(bucketName string) (*gocbcore.Agent, error) {
