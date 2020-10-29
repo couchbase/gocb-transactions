@@ -7,6 +7,8 @@ github.com/couchbase/gocbcore/v9 v9.0.4-0.20200720195112-25be55c99c56 h1:YZfptl0
 github.com/couchbase/gocbcore/v9 v9.0.4-0.20200720195112-25be55c99c56/go.mod h1:jOSQeBSECyNvD7aS4lfuaw+pD5t6ciTOf8hrDP/4Nus=
 github.com/couchbaselabs/gocbcore-transactions v0.0.0-20201029153407-8a75a5c3d9cf h1:4meAALaaGSqRyxZVVmNUuNzA7dZm15E64JhNp0Cznxg=
 github.com/couchbaselabs/gocbcore-transactions v0.0.0-20201029153407-8a75a5c3d9cf/go.mod h1:16kBUgiTupFshzLbu62vwrvheAWRbTZ+lH6I4Ha2RBw=
+github.com/couchbaselabs/gocbcore-transactions v0.0.0-20201029185343-9213d258aaa9 h1:kBVshqVym8ZuDwvkRZB4UE8fDBbgR8/JliIzveEqvIk=
+github.com/couchbaselabs/gocbcore-transactions v0.0.0-20201029185343-9213d258aaa9/go.mod h1:16kBUgiTupFshzLbu62vwrvheAWRbTZ+lH6I4Ha2RBw=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
