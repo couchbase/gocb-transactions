@@ -46,6 +46,10 @@ var (
 
 	// ErrTransactionAbortedExternally indicates the transaction was aborted externally.
 	ErrPreviousOperationFailed = coretxns.ErrPreviousOperationFailed
+
+	// ErrForwardCompatibilityFailure indicates an operation failed due to involving a document in another transaction
+	// which contains features this transaction does not support.
+	ErrForwardCompatibilityFailure = coretxns.ErrForwardCompatibilityFailure
 )
 
 type TransactionFailedError struct {

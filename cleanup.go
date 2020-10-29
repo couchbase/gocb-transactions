@@ -39,6 +39,16 @@ type CleanupRequest struct {
 	Replaces          []DocRecord
 	Removes           []DocRecord
 	State             AttemptState
+	ForwardCompat     map[string][]ForwardCompatibilityEntry
+}
+
+// ForwardCompatibilityEntry represents a forward compatibility entry.
+// Internal: This should never be used and is not supported.
+type ForwardCompatibilityEntry struct {
+	ProtocolVersion   string `json:"p,omitempty"`
+	ProtocolExtension string `json:"e,omitempty"`
+	Behaviour         string `json:"b,omitempty"`
+	RetryInterval     int    `json:"ra,omitempty"`
 }
 
 // Cleaner is responsible for performing cleanup of completed transactions.
@@ -173,6 +183,17 @@ func docRecordsFromCore(drs []coretxns.DocRecord) []DocRecord {
 }
 
 func cleanupRequestFromCore(request *coretxns.CleanupRequest) *CleanupRequest {
+	forwardCompat := make(map[string][]ForwardCompatibilityEntry)
+	for k, entries := range request.ForwardCompat {
+		if _, ok := forwardCompat[k]; !ok {
+			forwardCompat[k] = make([]ForwardCompatibilityEntry, len(entries))
+		}
+
+		for i, entry := range entries {
+			forwardCompat[k][i] = ForwardCompatibilityEntry(entry)
+		}
+	}
+
 	return &CleanupRequest{
 		AttemptID:         request.AttemptID,
 		AtrID:             string(request.AtrID),
@@ -183,10 +204,22 @@ func cleanupRequestFromCore(request *coretxns.CleanupRequest) *CleanupRequest {
 		Replaces:          docRecordsFromCore(request.Replaces),
 		Removes:           docRecordsFromCore(request.Removes),
 		State:             AttemptState(request.State),
+		ForwardCompat:     forwardCompat,
 	}
 }
 
 func cleanupRequestToCore(request *CleanupRequest) *coretxns.CleanupRequest {
+	forwardCompat := make(map[string][]coretxns.ForwardCompatibilityEntry)
+	for k, entries := range request.ForwardCompat {
+		if _, ok := forwardCompat[k]; !ok {
+			forwardCompat[k] = make([]coretxns.ForwardCompatibilityEntry, len(entries))
+		}
+
+		for i, entry := range entries {
+			forwardCompat[k][i] = coretxns.ForwardCompatibilityEntry(entry)
+		}
+	}
+
 	return &coretxns.CleanupRequest{
 		AttemptID:         request.AttemptID,
 		AtrID:             []byte(request.AtrID),
@@ -197,6 +230,7 @@ func cleanupRequestToCore(request *CleanupRequest) *coretxns.CleanupRequest {
 		Replaces:          docRecordsToCore(request.Replaces),
 		Removes:           docRecordsToCore(request.Removes),
 		State:             coretxns.AttemptState(request.State),
+		ForwardCompat:     forwardCompat,
 	}
 }
 
