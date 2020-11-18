@@ -77,6 +77,7 @@ func NewCleaner(agentProvider coretxns.BucketAgentProviderFn, config *Config) Cl
 				Hooks           coretxns.TransactionHooks
 				CleanUpHooks    coretxns.CleanUpHooks
 				SerialUnstaging bool
+				ExplicitATRs    bool
 			}{
 				Hooks:           nil,
 				CleanUpHooks:    cleanupHooksWrapper,

@@ -72,6 +72,7 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 			Hooks           coretxns.TransactionHooks
 			CleanUpHooks    coretxns.CleanUpHooks
 			SerialUnstaging bool
+			ExplicitATRs    bool
 		}{
 			Hooks:           hooksWrapper,
 			CleanUpHooks:    cleanupHooksWrapper,

@@ -35,9 +35,6 @@ var (
 	// ErrAtrEntryNotFound indicates that an expected ATR entry was missing
 	ErrAtrEntryNotFound = coretxns.ErrAtrEntryNotFound
 
-	// ErrUhOh is used for now to describe errors I yet know how to categorize
-	ErrUhOh = coretxns.ErrUhOh
-
 	// ErrDocAlreadyInTransaction indicates that a document is already in a transaction.
 	ErrDocAlreadyInTransaction = coretxns.ErrDocAlreadyInTransaction
 
