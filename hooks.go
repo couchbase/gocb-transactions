@@ -81,6 +81,10 @@ type coreTxnsHooksWrapper struct {
 	Hooks TransactionHooks
 }
 
+type clientRecordHooksWrapper interface {
+	coretxns.ClientRecordHooks
+}
+
 func (cthw *coreTxnsHooksWrapper) SetAttemptContext(ctx AttemptContext) {
 	cthw.ctx = ctx
 }
@@ -348,6 +352,41 @@ func (cthw *coreTxnsCleanupHooksWrapper) BeforeATRRemove(id []byte, cb func(erro
 	}()
 }
 
+type coreTxnsClientRecordHooksWrapper struct {
+	coreTxnsCleanupHooksWrapper
+	ClientRecordHooks ClientRecordHooks
+}
+
+func (hw *coreTxnsClientRecordHooksWrapper) BeforeCreateRecord(cb func(error)) {
+	go func() {
+		cb(hw.ClientRecordHooks.BeforeCreateRecord())
+	}()
+}
+
+func (hw *coreTxnsClientRecordHooksWrapper) BeforeRemoveClient(cb func(error)) {
+	go func() {
+		cb(hw.ClientRecordHooks.BeforeRemoveClient())
+	}()
+}
+
+func (hw *coreTxnsClientRecordHooksWrapper) BeforeUpdateCAS(cb func(error)) {
+	go func() {
+		cb(hw.ClientRecordHooks.BeforeUpdateCAS())
+	}()
+}
+
+func (hw *coreTxnsClientRecordHooksWrapper) BeforeGetRecord(cb func(error)) {
+	go func() {
+		cb(hw.ClientRecordHooks.BeforeGetRecord())
+	}()
+}
+
+func (hw *coreTxnsClientRecordHooksWrapper) BeforeUpdateRecord(cb func(error)) {
+	go func() {
+		cb(hw.ClientRecordHooks.BeforeUpdateRecord())
+	}()
+}
+
 type noopHooksWrapper struct {
 	coretxns.DefaultHooks
 }
@@ -357,4 +396,9 @@ func (nhw *noopHooksWrapper) SetAttemptContext(ctx AttemptContext) {
 
 type noopCleanupHooksWrapper struct {
 	coretxns.DefaultCleanupHooks
+}
+
+type noopClientRecordHooksWrapper struct {
+	coretxns.DefaultCleanupHooks
+	coretxns.DefaultClientRecordHooks
 }

@@ -51,6 +51,31 @@ type ForwardCompatibilityEntry struct {
 	RetryInterval     int    `json:"ra,omitempty"`
 }
 
+// ClientRecordDetails is the result of processing a client record.
+// Internal: This should never be used and is not supported.
+type ClientRecordDetails struct {
+	NumActiveClients     int
+	IndexOfThisClient    int
+	ClientIsNew          bool
+	ExpiredClientIDs     []string
+	NumExistingClients   int
+	NumExpiredClients    int
+	OverrideEnabled      bool
+	OverrideActive       bool
+	OverrideExpiresCas   int64
+	CasNowNanos          int64
+	AtrsHandledByClient  []string
+	CheckAtrEveryNMillis int
+	ClientUUID           string
+}
+
+// ProcessATRStats is the stats recorded when running a ProcessATR request.
+// Internal: This should never be used and is not supported.
+type ProcessATRStats struct {
+	NumEntries        int
+	NumEntriesExpired int
+}
+
 // Cleaner is responsible for performing cleanup of completed transactions.
 // Internal: This should never be used and is not supported.
 type Cleaner interface {
@@ -78,6 +103,7 @@ func NewCleaner(agentProvider coretxns.BucketAgentProviderFn, config *Config) Cl
 	corecfg.Internal.CleanUpHooks = cleanupHooksWrapper
 	corecfg.Internal.DisableCompoundOps = config.Internal.DisableCompoundOps
 	corecfg.Internal.SerialUnstaging = config.Internal.SerialUnstaging
+	corecfg.Internal.NumATRs = config.Internal.NumATRs
 
 	return &coreCleanerWrapper{
 		wrapped: coretxns.NewCleaner(corecfg),
@@ -135,6 +161,119 @@ func (ccw *coreCleanerWrapper) CleanupAttempt(bucket *gocb.Bucket, isRegular boo
 
 func (ccw *coreCleanerWrapper) Close() {
 	ccw.wrapped.Close()
+}
+
+// LostTransactionCleaner is responsible for performing cleanup of lost transactions.
+// Internal: This should never be used and is not supported.
+type LostTransactionCleaner interface {
+	ProcessATR(bucket *gocb.Bucket, atrID string) ([]CleanupAttempt, ProcessATRStats)
+	ProcessClient(bucket *gocb.Bucket, clientUUID string) (*ClientRecordDetails, error)
+	RemoveClient(uuid string) error
+	Close()
+}
+
+type coreLostCleanerWrapper struct {
+	wrapped coretxns.LostTransactionCleaner
+}
+
+func (clcw *coreLostCleanerWrapper) ProcessATR(bucket *gocb.Bucket, atrID string) ([]CleanupAttempt, ProcessATRStats) {
+	a, err := bucket.Internal().IORouter()
+	if err != nil {
+		return nil, ProcessATRStats{}
+	}
+
+	var ourAttempts []CleanupAttempt
+	var ourStats ProcessATRStats
+	waitCh := make(chan struct{}, 1)
+	clcw.wrapped.ProcessATR(a, atrID, func(attempts []coretxns.CleanupAttempt, stats coretxns.ProcessATRStats) {
+		for _, a := range attempts {
+			ourAttempts = append(ourAttempts, cleanupAttemptFromCore(a))
+		}
+		ourStats = ProcessATRStats(stats)
+
+		waitCh <- struct{}{}
+	})
+
+	<-waitCh
+	return ourAttempts, ourStats
+}
+
+func (clcw *coreLostCleanerWrapper) ProcessClient(bucket *gocb.Bucket, clientUUID string) (*ClientRecordDetails, error) {
+	type result struct {
+		recordDetails *ClientRecordDetails
+		err           error
+	}
+	waitCh := make(chan result, 1)
+	a, err := bucket.Internal().IORouter()
+	if err != nil {
+		return nil, err
+	}
+
+	clcw.wrapped.ProcessClient(a, clientUUID, func(details *coretxns.ClientRecordDetails, err error) {
+		if err != nil {
+			waitCh <- result{
+				err: err,
+			}
+			return
+		}
+		waitCh <- result{
+			recordDetails: &ClientRecordDetails{
+				NumActiveClients:     details.NumActiveClients,
+				IndexOfThisClient:    details.IndexOfThisClient,
+				ClientIsNew:          details.ClientIsNew,
+				ExpiredClientIDs:     details.ExpiredClientIDs,
+				NumExistingClients:   details.NumExistingClients,
+				NumExpiredClients:    details.NumExpiredClients,
+				OverrideEnabled:      details.OverrideEnabled,
+				OverrideActive:       details.OverrideActive,
+				OverrideExpiresCas:   details.OverrideExpiresCas,
+				CasNowNanos:          details.CasNowNanos,
+				AtrsHandledByClient:  details.AtrsHandledByClient,
+				CheckAtrEveryNMillis: details.CheckAtrEveryNMillis,
+				ClientUUID:           details.ClientUUID,
+			},
+		}
+	})
+
+	res := <-waitCh
+	return res.recordDetails, res.err
+}
+
+func (clcw *coreLostCleanerWrapper) RemoveClient(uuid string) error {
+	return clcw.wrapped.RemoveClientFromAllBuckets(uuid)
+}
+
+func (clcw *coreLostCleanerWrapper) Close() {
+	clcw.wrapped.Close()
+}
+
+// NewLostCleanup returns a LostCleanup implementation.
+// Internal: This should never be used and is not supported.
+func NewLostCleanup(agentProvider coretxns.BucketAgentProviderFn, bucketProvider coretxns.BucketListProviderFn,
+	config *Config) LostTransactionCleaner {
+	cleanupHooksWrapper := &coreTxnsClientRecordHooksWrapper{
+		coreTxnsCleanupHooksWrapper: coreTxnsCleanupHooksWrapper{
+			CleanupHooks: config.Internal.CleanupHooks,
+		},
+		ClientRecordHooks: config.Internal.ClientRecordHooks,
+	}
+
+	corecfg := &coretxns.Config{}
+	corecfg.DurabilityLevel = coretxns.DurabilityLevel(config.DurabilityLevel)
+	corecfg.KeyValueTimeout = config.KeyValueTimeout
+	corecfg.Internal.Hooks = nil
+	corecfg.CleanupQueueSize = config.CleanupQueueSize
+	corecfg.BucketAgentProvider = agentProvider
+	corecfg.BucketListProvider = bucketProvider
+	corecfg.Internal.CleanUpHooks = cleanupHooksWrapper
+	corecfg.Internal.ClientRecordHooks = cleanupHooksWrapper
+	corecfg.Internal.DisableCompoundOps = config.Internal.DisableCompoundOps
+	corecfg.Internal.SerialUnstaging = config.Internal.SerialUnstaging
+	corecfg.Internal.NumATRs = config.Internal.NumATRs
+
+	return &coreLostCleanerWrapper{
+		wrapped: coretxns.NewLostTransactionCleaner(corecfg),
+	}
 }
 
 func cleanupAttemptFromCore(attempt coretxns.CleanupAttempt) CleanupAttempt {

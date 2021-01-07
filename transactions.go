@@ -59,6 +59,21 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 		}
 	}
 
+	var clientRecordHooksWrapper clientRecordHooksWrapper
+	if config.Internal.ClientRecordHooks == nil {
+		clientRecordHooksWrapper = &noopClientRecordHooksWrapper{
+			DefaultCleanupHooks:      coretxns.DefaultCleanupHooks{},
+			DefaultClientRecordHooks: coretxns.DefaultClientRecordHooks{},
+		}
+	} else {
+		clientRecordHooksWrapper = &coreTxnsClientRecordHooksWrapper{
+			coreTxnsCleanupHooksWrapper: coreTxnsCleanupHooksWrapper{
+				CleanupHooks: config.Internal.CleanupHooks,
+			},
+			ClientRecordHooks: config.Internal.ClientRecordHooks,
+		}
+	}
+
 	t := &Transactions{
 		cluster:             cluster,
 		config:              *config,
@@ -71,13 +86,18 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 	corecfg.DurabilityLevel = coretxns.DurabilityLevel(config.DurabilityLevel)
 	corecfg.KeyValueTimeout = config.KeyValueTimeout
 	corecfg.BucketAgentProvider = t.agentProvider
+	corecfg.BucketListProvider = t.bucketListProvider
 	corecfg.CleanupClientAttempts = config.CleanupClientAttempts
 	corecfg.CleanupQueueSize = config.CleanupQueueSize
 	corecfg.ExpirationTime = config.ExpirationTime
+	corecfg.CleanupWindow = config.CleanupWindow
+	corecfg.CleanupLostAttempts = config.CleanupLostAttempts
 	corecfg.Internal.Hooks = hooksWrapper
 	corecfg.Internal.CleanUpHooks = cleanupHooksWrapper
+	corecfg.Internal.ClientRecordHooks = clientRecordHooksWrapper
 	corecfg.Internal.DisableCompoundOps = config.Internal.DisableCompoundOps
 	corecfg.Internal.SerialUnstaging = config.Internal.SerialUnstaging
+	corecfg.Internal.NumATRs = config.Internal.NumATRs
 
 	txns, err := coretxns.Init(corecfg)
 	if err != nil {
@@ -276,6 +296,21 @@ func (t *Transactions) Close() error {
 func (t *Transactions) agentProvider(bucketName string) (*gocbcore.Agent, error) {
 	b := t.cluster.Bucket(bucketName)
 	return b.Internal().IORouter()
+}
+
+func (t *Transactions) bucketListProvider() ([]string, error) {
+	b, err := t.cluster.Buckets().GetAllBuckets(&gocb.GetAllBucketsOptions{
+		Timeout: t.config.KeyValueTimeout,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var names []string
+	for name := range b {
+		names = append(names, name)
+	}
+	return names, nil
 }
 
 // TransactionsInternal exposes internal methods that are useful for testing and/or

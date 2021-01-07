@@ -63,6 +63,8 @@ type Config struct {
 		CleanupHooks       CleanupHooks
 		DisableCompoundOps bool
 		SerialUnstaging    bool
+		ClientRecordHooks  ClientRecordHooks
+		NumATRs            int
 	}
 }
 
