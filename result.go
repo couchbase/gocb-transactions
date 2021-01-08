@@ -29,15 +29,21 @@ type Attempt struct {
 }
 
 func newAttempt(a coretxns.Attempt) Attempt {
-	return Attempt{
+	atmptState := a.State
+	if atmptState == coretxns.AttemptStateCommitting {
+		atmptState = coretxns.AttemptStatePending
+	}
+
+	atmpt := Attempt{
 		ID:                a.ID,
-		State:             AttemptState(a.State),
+		State:             AttemptState(atmptState),
 		AtrID:             string(a.AtrID),
 		AtrBucketName:     a.AtrBucketName,
 		AtrScopeName:      a.AtrScopeName,
 		AtrCollectionName: a.AtrCollectionName,
 		UnstagingComplete: a.UnstagingComplete,
 	}
+	return atmpt
 }
 
 // Result represents the result of a transaction which was executed.

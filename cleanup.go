@@ -69,23 +69,18 @@ func NewCleaner(agentProvider coretxns.BucketAgentProviderFn, config *Config) Cl
 		CleanupHooks: config.Internal.CleanupHooks,
 	}
 
+	corecfg := &coretxns.Config{}
+	corecfg.DurabilityLevel = coretxns.DurabilityLevel(config.DurabilityLevel)
+	corecfg.KeyValueTimeout = config.KeyValueTimeout
+	corecfg.Internal.Hooks = nil
+	corecfg.CleanupQueueSize = config.CleanupQueueSize
+	corecfg.BucketAgentProvider = agentProvider
+	corecfg.Internal.CleanUpHooks = cleanupHooksWrapper
+	corecfg.Internal.DisableCompoundOps = config.Internal.DisableCompoundOps
+	corecfg.Internal.SerialUnstaging = config.Internal.SerialUnstaging
+
 	return &coreCleanerWrapper{
-		wrapped: coretxns.NewCleaner(&coretxns.Config{
-			DurabilityLevel: coretxns.DurabilityLevel(config.DurabilityLevel),
-			KeyValueTimeout: config.KeyValueTimeout,
-			Internal: struct {
-				Hooks           coretxns.TransactionHooks
-				CleanUpHooks    coretxns.CleanUpHooks
-				SerialUnstaging bool
-				ExplicitATRs    bool
-			}{
-				Hooks:           nil,
-				CleanUpHooks:    cleanupHooksWrapper,
-				SerialUnstaging: config.Internal.SerialUnstaging,
-			},
-			CleanupQueueSize:    config.CleanupQueueSize,
-			BucketAgentProvider: agentProvider,
-		}),
+		wrapped: coretxns.NewCleaner(corecfg),
 	}
 }
 

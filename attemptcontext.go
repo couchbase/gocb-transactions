@@ -3,8 +3,6 @@ package transactions
 import (
 	"errors"
 
-	"github.com/couchbase/gocbcore/v9"
-
 	"github.com/couchbase/gocb/v2"
 	coretxns "github.com/couchbaselabs/gocbcore-transactions"
 )
@@ -32,6 +30,10 @@ type InternalAttemptContext struct {
 	ac *AttemptContext
 }
 
+func (iac *InternalAttemptContext) IsExpired() bool {
+	return iac.ac.txn.HasExpired()
+}
+
 func (iac *InternalAttemptContext) Attempt() coretxns.Attempt {
 	return iac.ac.txn.Attempt()
 }
@@ -39,7 +41,7 @@ func (iac *InternalAttemptContext) Attempt() coretxns.Attempt {
 // GetOptional will attempt to fetch a document, and return nil if it does not exist.
 func (c *AttemptContext) GetOptional(collection *gocb.Collection, id string) (*GetResult, error) {
 	res, err := c.Get(collection, id)
-	if errors.Is(err, gocbcore.ErrDocumentNotFound) {
+	if errors.Is(err, coretxns.ErrDocumentNotFound) {
 		return nil, nil
 	}
 	return res, err

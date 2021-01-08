@@ -47,6 +47,10 @@ var (
 	// ErrForwardCompatibilityFailure indicates an operation failed due to involving a document in another transaction
 	// which contains features this transaction does not support.
 	ErrForwardCompatibilityFailure = coretxns.ErrForwardCompatibilityFailure
+
+	ErrDocumentNotFound = coretxns.ErrDocumentNotFound
+
+	ErrDocumentAlreadyExists = coretxns.ErrDocumentAlreadyExists
 )
 
 type TransactionFailedError struct {
@@ -127,6 +131,12 @@ func (tfe TransactionFailedPostCommit) Unwrap() error {
 // Internal: This should never be used and is not supported.
 func (tfe TransactionFailedPostCommit) Result() *Result {
 	return tfe.result
+}
+
+type transactionErrorDef struct {
+	Attempts          []Attempt
+	TransactionID     string
+	UnstagingComplete bool
 }
 
 func createTransactionError(attempts []Attempt, attempt coretxns.Attempt, txnID string, err error) error {

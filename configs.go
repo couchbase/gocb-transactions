@@ -1,8 +1,9 @@
 package transactions
 
 import (
-	coretxns "github.com/couchbaselabs/gocbcore-transactions"
 	"time"
+
+	coretxns "github.com/couchbaselabs/gocbcore-transactions"
 )
 
 // DurabilityLevel specifies the level of synchronous replication to use.
@@ -58,9 +59,10 @@ type Config struct {
 	// Internal specifies a set of options for internal use.
 	// Internal: This should never be used and is not supported.
 	Internal struct {
-		Hooks           TransactionHooks
-		CleanupHooks    CleanupHooks
-		SerialUnstaging bool
+		Hooks              TransactionHooks
+		CleanupHooks       CleanupHooks
+		DisableCompoundOps bool
+		SerialUnstaging    bool
 	}
 }
 

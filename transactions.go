@@ -2,9 +2,11 @@ package transactions
 
 import (
 	"errors"
-	"github.com/couchbase/gocbcore/v9"
+	"log"
 	"math"
 	"time"
+
+	"github.com/couchbase/gocbcore/v9"
 
 	gocb "github.com/couchbase/gocb/v2"
 	coretxns "github.com/couchbaselabs/gocbcore-transactions"
@@ -17,7 +19,7 @@ type Transactions struct {
 	cluster    *gocb.Cluster
 	transcoder gocb.Transcoder
 
-	txns                *coretxns.Transactions
+	txns                *coretxns.Manager
 	hooksWrapper        hooksWrapper
 	cleanupHooksWrapper cleanupHooksWrapper
 }
@@ -65,24 +67,19 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 		cleanupHooksWrapper: cleanupHooksWrapper,
 	}
 
-	txns, err := coretxns.Init(&coretxns.Config{
-		DurabilityLevel: coretxns.DurabilityLevel(config.DurabilityLevel),
-		KeyValueTimeout: config.KeyValueTimeout,
-		Internal: struct {
-			Hooks           coretxns.TransactionHooks
-			CleanUpHooks    coretxns.CleanUpHooks
-			SerialUnstaging bool
-			ExplicitATRs    bool
-		}{
-			Hooks:           hooksWrapper,
-			CleanUpHooks:    cleanupHooksWrapper,
-			SerialUnstaging: config.Internal.SerialUnstaging,
-		},
-		BucketAgentProvider:   t.agentProvider,
-		CleanupClientAttempts: config.CleanupClientAttempts,
-		CleanupQueueSize:      config.CleanupQueueSize,
-		ExpirationTime:        config.ExpirationTime,
-	})
+	corecfg := &coretxns.Config{}
+	corecfg.DurabilityLevel = coretxns.DurabilityLevel(config.DurabilityLevel)
+	corecfg.KeyValueTimeout = config.KeyValueTimeout
+	corecfg.BucketAgentProvider = t.agentProvider
+	corecfg.CleanupClientAttempts = config.CleanupClientAttempts
+	corecfg.CleanupQueueSize = config.CleanupQueueSize
+	corecfg.ExpirationTime = config.ExpirationTime
+	corecfg.Internal.Hooks = hooksWrapper
+	corecfg.Internal.CleanUpHooks = cleanupHooksWrapper
+	corecfg.Internal.DisableCompoundOps = config.Internal.DisableCompoundOps
+	corecfg.Internal.SerialUnstaging = config.Internal.SerialUnstaging
+
+	txns, err := coretxns.Init(corecfg)
 	if err != nil {
 		return nil, err
 	}
@@ -145,95 +142,119 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 			t.hooksWrapper.SetAttemptContext(attempt)
 		}
 
-		lambdaErr := t.runLambda(logicFn, attempt)
-		if lambdaErr != nil {
-			var txnErr *TransactionOperationFailedError
-			if !errors.As(lambdaErr, &txnErr) {
-				txnErr = &TransactionOperationFailedError{
-					errorCause: lambdaErr,
-					errorClass: coretxns.ErrorClassFailOther,
+		lambdaErr := logicFn(&attempt)
+
+		// The Rollback method when invoked by the user will potentially return nil with
+		// no errors indicating that a retry should not be performed.  In gocbcoretxn, this
+		// responsibility lies with the caller, so we need to wrap it in gocbtxn.
+		if lambdaErr == nil && attempt.rolledBack {
+			lambdaErr = errors.New("user initiated rollback")
+		}
+
+		var finalErr error
+		if lambdaErr == nil {
+			if txn.CanCommit() {
+				finalErr = attempt.Commit()
+			} else if txn.ShouldRollback() {
+				finalErr = attempt.Rollback()
+			}
+		} else {
+			finalErr = lambdaErr
+
+			if txn.ShouldRollback() {
+				rollbackErr := attempt.Rollback()
+				if rollbackErr != nil {
+					log.Printf("rollback after error failed: %s", rollbackErr)
 				}
 			}
-
-			a := txn.Attempt()
-			if !txnErr.Rollback() || attempt.rolledBack {
-				attempts = append(attempts, newAttempt(a))
-
-				isFailedPostCommit := txnErr.shouldRaise == coretxns.ErrorReasonTransactionFailedPostCommit
-				if errors.Is(txnErr, coretxns.ErrAttemptExpired) && !isFailedPostCommit {
-					return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
-				}
-
-				if txnErr.Retry() {
-					time.Sleep(backoffCalc())
-					continue
-				}
-
-				if isFailedPostCommit {
-					return createResult(attempts, a, txn.ID()), nil
-				}
-
-				return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
-			}
-
-			err = attempt.Rollback()
-			a = txn.Attempt()
-			attempts = append(attempts, newAttempt(a))
-			if err != nil {
-				var txnErr *TransactionOperationFailedError
-				if !errors.As(lambdaErr, &txnErr) {
-					txnErr = &TransactionOperationFailedError{
-						errorCause: lambdaErr,
-						errorClass: coretxns.ErrorClassFailOther,
-					}
-				}
-
-				return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
-			}
-
-			isFailedPostCommit := txnErr.shouldRaise == coretxns.ErrorReasonTransactionFailedPostCommit
-			if a.Internal.Expired && !isFailedPostCommit {
-				return nil, createTransactionError(attempts, a, txn.ID(), &TransactionOperationFailedError{
-					errorCause:  coretxns.ErrAttemptExpired,
-					errorClass:  coretxns.ErrorClassFailExpiry,
-					shouldRaise: coretxns.ErrorReasonTransactionExpired,
-				})
-			}
-
-			if txnErr.Retry() {
-				time.Sleep(backoffCalc())
-				continue
-			}
-
-			if isFailedPostCommit {
-				return createResult(attempts, a, txn.ID()), nil
-			}
-
-			return nil, createTransactionError(attempts, a, txn.ID(), txnErr)
 		}
 
 		a := txn.Attempt()
 		attempts = append(attempts, newAttempt(a))
 
-		return createResult(attempts, a, txn.ID()), nil
-	}
-}
+		if lambdaErr == nil {
+			a.PreExpiryAutoRollback = false
+		}
 
-func (t *Transactions) runLambda(logicFn AttemptFunc, attempt AttemptContext) error {
-	err := logicFn(&attempt)
-	if err != nil {
-		return err
-	}
+		var finalErrCause error
+		var txnErr *TransactionOperationFailedError
+		var wasUserError bool
+		if finalErr != nil {
+			if errors.As(finalErr, &txnErr) {
+				finalErrCause = txnErr.Unwrap()
+				wasUserError = false
+			} else {
+				wasUserError = true
+			}
+		} else {
+			wasUserError = false
+		}
 
-	if !attempt.committed && !attempt.rolledBack {
-		err := attempt.Commit()
-		if err != nil {
-			return err
+		if !a.Expired && txn.ShouldRetry() && !wasUserError {
+			time.Sleep(backoffCalc())
+			continue
+		}
+
+		switch a.State {
+		case coretxns.AttemptStateNothingWritten:
+			fallthrough
+		case coretxns.AttemptStatePending:
+			fallthrough
+		case coretxns.AttemptStateAborted:
+			fallthrough
+		case coretxns.AttemptStateRolledBack:
+			if a.Expired && !a.PreExpiryAutoRollback && !wasUserError {
+				return nil, &TransactionExpiredError{
+					result: &Result{
+						TransactionID:     txn.ID(),
+						Attempts:          attempts,
+						MutationState:     gocb.MutationState{},
+						UnstagingComplete: false,
+					},
+				}
+			}
+
+			return nil, &TransactionFailedError{
+				cause: finalErrCause,
+				result: &Result{
+					TransactionID:     txn.ID(),
+					Attempts:          attempts,
+					MutationState:     gocb.MutationState{},
+					UnstagingComplete: false,
+				},
+			}
+		case coretxns.AttemptStateCommitting:
+			return nil, &TransactionCommitAmbiguousError{
+				cause: finalErrCause,
+				result: &Result{
+					TransactionID:     txn.ID(),
+					Attempts:          attempts,
+					MutationState:     gocb.MutationState{},
+					UnstagingComplete: false,
+				},
+			}
+		case coretxns.AttemptStateCommitted:
+			fallthrough
+		case coretxns.AttemptStateCompleted:
+			unstagingComplete := a.State == coretxns.AttemptStateCompleted
+
+			mtState := gocb.MutationState{}
+			if unstagingComplete {
+				for _, tok := range a.MutationState {
+					mtState.Internal().Add(tok.BucketName, tok.MutationToken)
+				}
+			}
+
+			return &Result{
+				TransactionID:     txn.ID(),
+				Attempts:          attempts,
+				MutationState:     mtState,
+				UnstagingComplete: unstagingComplete,
+			}, nil
+		default:
+			return nil, errors.New("invalid final transaction state")
 		}
 	}
-
-	return nil
-
 }
 
 // Commit will commit a previously prepared and serialized transaction.
