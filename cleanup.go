@@ -102,6 +102,7 @@ func NewCleaner(agentProvider coretxns.BucketAgentProviderFn, config *Config) Cl
 	corecfg.BucketAgentProvider = agentProvider
 	corecfg.Internal.CleanUpHooks = cleanupHooksWrapper
 	corecfg.Internal.DisableCompoundOps = config.Internal.DisableCompoundOps
+	corecfg.Internal.DisableCBD3838Fix = config.Internal.DisableCBD3838Fix
 	corecfg.Internal.SerialUnstaging = config.Internal.SerialUnstaging
 	corecfg.Internal.NumATRs = config.Internal.NumATRs
 
@@ -268,6 +269,7 @@ func NewLostCleanup(agentProvider coretxns.BucketAgentProviderFn, bucketProvider
 	corecfg.Internal.CleanUpHooks = cleanupHooksWrapper
 	corecfg.Internal.ClientRecordHooks = cleanupHooksWrapper
 	corecfg.Internal.DisableCompoundOps = config.Internal.DisableCompoundOps
+	corecfg.Internal.DisableCBD3838Fix = config.Internal.DisableCBD3838Fix
 	corecfg.Internal.SerialUnstaging = config.Internal.SerialUnstaging
 	corecfg.Internal.NumATRs = config.Internal.NumATRs
 
