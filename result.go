@@ -16,44 +16,10 @@ const (
 	AttemptStateRolledBack     AttemptState = AttemptState(coretxns.AttemptStateRolledBack)
 )
 
-// Attempt represents a singular attempt at executing a transaction.  A
-// transaction may require multiple attempts before being successful.
-type Attempt struct {
-	State             AttemptState
-	ID                string
-	AtrID             string
-	AtrBucketName     string
-	AtrScopeName      string
-	AtrCollectionName string
-	UnstagingComplete bool
-}
-
-func newAttempt(a coretxns.Attempt) Attempt {
-	atmptState := a.State
-	if atmptState == coretxns.AttemptStateCommitting {
-		atmptState = coretxns.AttemptStatePending
-	}
-
-	atmpt := Attempt{
-		ID:                a.ID,
-		State:             AttemptState(atmptState),
-		AtrID:             string(a.AtrID),
-		AtrBucketName:     a.AtrBucketName,
-		AtrScopeName:      a.AtrScopeName,
-		AtrCollectionName: a.AtrCollectionName,
-		UnstagingComplete: a.UnstagingComplete,
-	}
-	return atmpt
-}
-
 // Result represents the result of a transaction which was executed.
 type Result struct {
 	// TransactionID represents the UUID assigned to this transaction
 	TransactionID string
-
-	// Attempts records all attempts that were performed when executing
-	// this transaction.
-	Attempts []Attempt
 
 	// MutationState represents the state associated with this transaction
 	// and can be used to perform RYOW queries at a later point.
@@ -70,20 +36,5 @@ type Result struct {
 	// Internal: This should never be used and is not supported.
 	Internal struct {
 		MutationTokens []gocb.MutationToken
-	}
-}
-
-func createResult(attempts []Attempt, attempt coretxns.Attempt, txnID string) *Result {
-	state := &gocb.MutationState{}
-	for _, tok := range attempt.MutationState {
-		state.Internal().Add(tok.BucketName, tok.MutationToken)
-	}
-
-	return &Result{
-		Attempts:          attempts,
-		TransactionID:     txnID,
-		UnstagingComplete: attempt.UnstagingComplete,
-		MutationState:     *state,
-		Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
 	}
 }

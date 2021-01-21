@@ -147,7 +147,7 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 
 		return time.Duration(backoff)
 	}
-	var attempts []Attempt
+
 	for {
 		err = txn.NewAttempt()
 		if err != nil {
@@ -191,7 +191,6 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 		}
 
 		a := txn.Attempt()
-		attempts = append(attempts, newAttempt(a))
 
 		if lambdaErr == nil {
 			a.PreExpiryAutoRollback = false
@@ -228,7 +227,6 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				return nil, &TransactionExpiredError{
 					result: &Result{
 						TransactionID:     txn.ID(),
-						Attempts:          attempts,
 						MutationState:     gocb.MutationState{},
 						UnstagingComplete: false,
 					},
@@ -239,7 +237,6 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				cause: finalErrCause,
 				result: &Result{
 					TransactionID:     txn.ID(),
-					Attempts:          attempts,
 					MutationState:     gocb.MutationState{},
 					UnstagingComplete: false,
 				},
@@ -249,7 +246,6 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				cause: finalErrCause,
 				result: &Result{
 					TransactionID:     txn.ID(),
-					Attempts:          attempts,
 					MutationState:     gocb.MutationState{},
 					UnstagingComplete: false,
 				},
@@ -268,7 +264,6 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 
 			return &Result{
 				TransactionID:     txn.ID(),
-				Attempts:          attempts,
 				MutationState:     mtState,
 				UnstagingComplete: unstagingComplete,
 			}, nil

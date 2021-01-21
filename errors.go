@@ -3,7 +3,6 @@ package transactions
 import (
 	"errors"
 
-	"github.com/couchbase/gocb/v2"
 	coretxns "github.com/couchbaselabs/gocbcore-transactions"
 )
 
@@ -131,56 +130,6 @@ func (tfe TransactionFailedPostCommit) Unwrap() error {
 // Internal: This should never be used and is not supported.
 func (tfe TransactionFailedPostCommit) Result() *Result {
 	return tfe.result
-}
-
-type transactionErrorDef struct {
-	Attempts          []Attempt
-	TransactionID     string
-	UnstagingComplete bool
-}
-
-func createTransactionError(attempts []Attempt, attempt coretxns.Attempt, txnID string, err error) error {
-	state := &gocb.MutationState{}
-	for _, tok := range attempt.MutationState {
-		state.Internal().Add(tok.BucketName, tok.MutationToken)
-	}
-
-	lastAttempt := attempts[len(attempts)-1]
-
-	result := &Result{
-		Attempts:          attempts,
-		TransactionID:     txnID,
-		UnstagingComplete: lastAttempt.UnstagingComplete,
-		MutationState:     *state,
-		Internal:          struct{ MutationTokens []gocb.MutationToken }{MutationTokens: state.Internal().Tokens()},
-	}
-
-	var txnErr *TransactionOperationFailedError
-	if errors.As(err, &txnErr) {
-		switch txnErr.ToRaise() {
-		case coretxns.ErrorReasonTransactionExpired:
-			return &TransactionExpiredError{
-				result: result,
-			}
-		case coretxns.ErrorReasonTransactionCommitAmbiguous:
-			return &TransactionCommitAmbiguousError{
-				cause:  txnErr,
-				result: result,
-			}
-		case coretxns.ErrorReasonTransactionFailedPostCommit:
-			return &TransactionFailedPostCommit{
-				cause:  txnErr,
-				result: result,
-			}
-		default:
-			return &TransactionFailedError{
-				cause:  txnErr,
-				result: result,
-			}
-		}
-	} else {
-		return errors.New("an error was attempted to be returned which wasn't operation failed, this is a bug")
-	}
 }
 
 // ErrTransactionOperationFailed is used when a transaction operation fails.
