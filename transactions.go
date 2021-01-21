@@ -227,7 +227,6 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				return nil, &TransactionExpiredError{
 					result: &Result{
 						TransactionID:     txn.ID(),
-						MutationState:     gocb.MutationState{},
 						UnstagingComplete: false,
 					},
 				}
@@ -237,7 +236,6 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				cause: finalErrCause,
 				result: &Result{
 					TransactionID:     txn.ID(),
-					MutationState:     gocb.MutationState{},
 					UnstagingComplete: false,
 				},
 			}
@@ -246,7 +244,6 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 				cause: finalErrCause,
 				result: &Result{
 					TransactionID:     txn.ID(),
-					MutationState:     gocb.MutationState{},
 					UnstagingComplete: false,
 				},
 			}
@@ -255,16 +252,8 @@ func (t *Transactions) Run(logicFn AttemptFunc, perConfig *PerTransactionConfig)
 		case coretxns.AttemptStateCompleted:
 			unstagingComplete := a.State == coretxns.AttemptStateCompleted
 
-			mtState := gocb.MutationState{}
-			if unstagingComplete {
-				for _, tok := range a.MutationState {
-					mtState.Internal().Add(tok.BucketName, tok.MutationToken)
-				}
-			}
-
 			return &Result{
 				TransactionID:     txn.ID(),
-				MutationState:     mtState,
 				UnstagingComplete: unstagingComplete,
 			}, nil
 		default:

@@ -1,7 +1,6 @@
 package transactions
 
 import (
-	gocb "github.com/couchbase/gocb/v2"
 	coretxns "github.com/couchbaselabs/gocbcore-transactions"
 )
 
@@ -21,10 +20,6 @@ type Result struct {
 	// TransactionID represents the UUID assigned to this transaction
 	TransactionID string
 
-	// MutationState represents the state associated with this transaction
-	// and can be used to perform RYOW queries at a later point.
-	MutationState gocb.MutationState
-
 	// UnstagingComplete indicates whether the transaction was succesfully
 	// unstaged, or if a later cleanup job will be responsible.
 	UnstagingComplete bool
@@ -32,9 +27,4 @@ type Result struct {
 	// Serialized represents the serialized data from this transaction if
 	// the transaction was serialized as opposed to being executed.
 	Serialized *SerializedContext
-
-	// Internal: This should never be used and is not supported.
-	Internal struct {
-		MutationTokens []gocb.MutationToken
-	}
 }
