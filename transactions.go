@@ -82,6 +82,17 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 		cleanupHooksWrapper: cleanupHooksWrapper,
 	}
 
+	atrLocation := coretxns.ATRLocation{}
+	if config.MetadataCollection != nil {
+		customATRAgent, err := config.MetadataCollection.Bucket().Internal().IORouter()
+		if err != nil {
+			return nil, err
+		}
+		atrLocation.Agent = customATRAgent
+		atrLocation.CollectionName = config.MetadataCollection.Name()
+		atrLocation.ScopeName = config.MetadataCollection.ScopeName()
+	}
+
 	corecfg := &coretxns.Config{}
 	corecfg.DurabilityLevel = coretxns.DurabilityLevel(config.DurabilityLevel)
 	corecfg.KeyValueTimeout = config.KeyValueTimeout
@@ -92,6 +103,7 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 	corecfg.ExpirationTime = config.ExpirationTime
 	corecfg.CleanupWindow = config.CleanupWindow
 	corecfg.CleanupLostAttempts = config.CleanupLostAttempts
+	corecfg.CustomATRLocation = atrLocation
 	corecfg.Internal.Hooks = hooksWrapper
 	corecfg.Internal.CleanUpHooks = cleanupHooksWrapper
 	corecfg.Internal.ClientRecordHooks = clientRecordHooksWrapper

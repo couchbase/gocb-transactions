@@ -1,6 +1,7 @@
 package transactions
 
 import (
+	"github.com/couchbase/gocb/v2"
 	"time"
 
 	coretxns "github.com/couchbaselabs/gocbcore-transactions"
@@ -29,6 +30,9 @@ const (
 
 // Config specifies various tunable options related to transactions.
 type Config struct {
+	// MetadataCollection specifies a specific location to place meta-data.
+	MetadataCollection *gocb.Collection
+
 	// ExpirationTime sets the maximum time that transactions created
 	// by this Transactions object can run for, before expiring.
 	ExpirationTime time.Duration
@@ -74,4 +78,12 @@ type PerTransactionConfig struct {
 	// DurabilityLevel specifies the durability level that should be used
 	// for all write operations performed by this transaction.
 	DurabilityLevel DurabilityLevel
+}
+
+// ATRLocation specifies a specific location where ATR entries should be
+// placed when performing transactions.
+type ATRLocation struct {
+	BucketName     string
+	ScopeName      string
+	CollectionName string
 }
