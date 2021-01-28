@@ -97,7 +97,7 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 	corecfg.DurabilityLevel = coretxns.DurabilityLevel(config.DurabilityLevel)
 	corecfg.KeyValueTimeout = config.KeyValueTimeout
 	corecfg.BucketAgentProvider = t.agentProvider
-	corecfg.BucketListProvider = t.bucketListProvider
+	corecfg.LostCleanupATRLocationProvider = t.atrLocationsProvider
 	corecfg.CleanupClientAttempts = config.CleanupClientAttempts
 	corecfg.CleanupQueueSize = config.CleanupQueueSize
 	corecfg.ExpirationTime = config.ExpirationTime
@@ -116,7 +116,7 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	txns.Config()
 	t.txns = txns
 	return t, nil
 }
@@ -295,19 +295,34 @@ func (t *Transactions) agentProvider(bucketName string) (*gocbcore.Agent, error)
 	return b.Internal().IORouter()
 }
 
-func (t *Transactions) bucketListProvider() ([]string, error) {
-	b, err := t.cluster.Buckets().GetAllBuckets(&gocb.GetAllBucketsOptions{
-		Timeout: t.config.KeyValueTimeout,
-	})
-	if err != nil {
-		return nil, err
-	}
+func (t *Transactions) atrLocationsProvider() ([]coretxns.LostATRLocation, error) {
+	meta := t.config.MetadataCollection
+	if meta == nil {
+		b, err := t.cluster.Buckets().GetAllBuckets(&gocb.GetAllBucketsOptions{
+			Timeout: t.config.KeyValueTimeout,
+		})
+		if err != nil {
+			return nil, err
+		}
 
-	var names []string
-	for name := range b {
-		names = append(names, name)
+		var names []coretxns.LostATRLocation
+		for name := range b {
+			names = append(names, coretxns.LostATRLocation{
+				BucketName:     name,
+				ScopeName:      "",
+				CollectionName: "",
+			})
+		}
+		return names, nil
+	} else {
+		return []coretxns.LostATRLocation{
+			{
+				BucketName:     meta.Bucket().Name(),
+				ScopeName:      meta.ScopeName(),
+				CollectionName: meta.Name(),
+			},
+		}, nil
 	}
-	return names, nil
 }
 
 // TransactionsInternal exposes internal methods that are useful for testing and/or

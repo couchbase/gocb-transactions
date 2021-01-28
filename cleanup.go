@@ -167,8 +167,8 @@ func (ccw *coreCleanerWrapper) Close() {
 // LostTransactionCleaner is responsible for performing cleanup of lost transactions.
 // Internal: This should never be used and is not supported.
 type LostTransactionCleaner interface {
-	ProcessATR(bucket *gocb.Bucket, atrID string) ([]CleanupAttempt, ProcessATRStats)
-	ProcessClient(bucket *gocb.Bucket, clientUUID string) (*ClientRecordDetails, error)
+	ProcessATR(bucket *gocb.Bucket, collection, scope, atrID string) ([]CleanupAttempt, ProcessATRStats)
+	ProcessClient(bucket *gocb.Bucket, collection, scope, clientUUID string) (*ClientRecordDetails, error)
 	RemoveClient(uuid string) error
 	Close()
 }
@@ -177,7 +177,7 @@ type coreLostCleanerWrapper struct {
 	wrapped coretxns.LostTransactionCleaner
 }
 
-func (clcw *coreLostCleanerWrapper) ProcessATR(bucket *gocb.Bucket, atrID string) ([]CleanupAttempt, ProcessATRStats) {
+func (clcw *coreLostCleanerWrapper) ProcessATR(bucket *gocb.Bucket, collection, scope, atrID string) ([]CleanupAttempt, ProcessATRStats) {
 	a, err := bucket.Internal().IORouter()
 	if err != nil {
 		return nil, ProcessATRStats{}
@@ -186,7 +186,7 @@ func (clcw *coreLostCleanerWrapper) ProcessATR(bucket *gocb.Bucket, atrID string
 	var ourAttempts []CleanupAttempt
 	var ourStats ProcessATRStats
 	waitCh := make(chan struct{}, 1)
-	clcw.wrapped.ProcessATR(a, atrID, func(attempts []coretxns.CleanupAttempt, stats coretxns.ProcessATRStats) {
+	clcw.wrapped.ProcessATR(a, collection, scope, atrID, func(attempts []coretxns.CleanupAttempt, stats coretxns.ProcessATRStats) {
 		for _, a := range attempts {
 			ourAttempts = append(ourAttempts, cleanupAttemptFromCore(a))
 		}
@@ -199,7 +199,7 @@ func (clcw *coreLostCleanerWrapper) ProcessATR(bucket *gocb.Bucket, atrID string
 	return ourAttempts, ourStats
 }
 
-func (clcw *coreLostCleanerWrapper) ProcessClient(bucket *gocb.Bucket, clientUUID string) (*ClientRecordDetails, error) {
+func (clcw *coreLostCleanerWrapper) ProcessClient(bucket *gocb.Bucket, collection, scope, clientUUID string) (*ClientRecordDetails, error) {
 	type result struct {
 		recordDetails *ClientRecordDetails
 		err           error
@@ -210,7 +210,7 @@ func (clcw *coreLostCleanerWrapper) ProcessClient(bucket *gocb.Bucket, clientUUI
 		return nil, err
 	}
 
-	clcw.wrapped.ProcessClient(a, clientUUID, func(details *coretxns.ClientRecordDetails, err error) {
+	clcw.wrapped.ProcessClient(a, collection, scope, clientUUID, func(details *coretxns.ClientRecordDetails, err error) {
 		if err != nil {
 			waitCh <- result{
 				err: err,
@@ -250,7 +250,7 @@ func (clcw *coreLostCleanerWrapper) Close() {
 
 // NewLostCleanup returns a LostCleanup implementation.
 // Internal: This should never be used and is not supported.
-func NewLostCleanup(agentProvider coretxns.BucketAgentProviderFn, bucketProvider coretxns.BucketListProviderFn,
+func NewLostCleanup(agentProvider coretxns.BucketAgentProviderFn, locationProvider coretxns.LostCleanupATRLocationProviderFn,
 	config *Config) LostTransactionCleaner {
 	cleanupHooksWrapper := &coreTxnsClientRecordHooksWrapper{
 		coreTxnsCleanupHooksWrapper: coreTxnsCleanupHooksWrapper{
@@ -265,7 +265,7 @@ func NewLostCleanup(agentProvider coretxns.BucketAgentProviderFn, bucketProvider
 	corecfg.Internal.Hooks = nil
 	corecfg.CleanupQueueSize = config.CleanupQueueSize
 	corecfg.BucketAgentProvider = agentProvider
-	corecfg.BucketListProvider = bucketProvider
+	corecfg.LostCleanupATRLocationProvider = locationProvider
 	corecfg.Internal.CleanUpHooks = cleanupHooksWrapper
 	corecfg.Internal.ClientRecordHooks = cleanupHooksWrapper
 	corecfg.Internal.DisableCompoundOps = config.Internal.DisableCompoundOps
