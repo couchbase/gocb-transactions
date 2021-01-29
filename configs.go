@@ -1,8 +1,9 @@
 package transactions
 
 import (
-	"github.com/couchbase/gocb/v2"
 	"time"
+
+	"github.com/couchbase/gocb/v2"
 
 	coretxns "github.com/couchbaselabs/gocbcore-transactions"
 )
@@ -66,7 +67,6 @@ type Config struct {
 		Hooks              TransactionHooks
 		CleanupHooks       CleanupHooks
 		DisableCompoundOps bool
-		DisableCBD3838Fix  bool
 		SerialUnstaging    bool
 		ClientRecordHooks  ClientRecordHooks
 		NumATRs            int

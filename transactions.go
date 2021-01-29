@@ -108,7 +108,6 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 	corecfg.Internal.CleanUpHooks = cleanupHooksWrapper
 	corecfg.Internal.ClientRecordHooks = clientRecordHooksWrapper
 	corecfg.Internal.DisableCompoundOps = config.Internal.DisableCompoundOps
-	corecfg.Internal.DisableCBD3838Fix = config.Internal.DisableCBD3838Fix
 	corecfg.Internal.SerialUnstaging = config.Internal.SerialUnstaging
 	corecfg.Internal.NumATRs = config.Internal.NumATRs
 
