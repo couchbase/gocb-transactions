@@ -30,6 +30,8 @@ type TransactionHooks interface {
 	BeforeCheckATREntryForBlockingDoc(ctx AttemptContext, docID string) error
 	BeforeDocGet(ctx AttemptContext, docID string) error
 	BeforeGetDocInExistsDuringStagedInsert(ctx AttemptContext, docID string) error
+	BeforeRemoveStagedInsert(ctx AttemptContext, docID string) error
+	AfterRemoveStagedInsert(ctx AttemptContext, docID string) error
 	AfterDocsCommitted(ctx AttemptContext) error
 	AfterDocsRemoved(ctx AttemptContext) error
 	AfterATRPending(ctx AttemptContext) error
@@ -224,6 +226,18 @@ func (cthw *coreTxnsHooksWrapper) BeforeDocGet(docID []byte, cb func(err error))
 func (cthw *coreTxnsHooksWrapper) BeforeGetDocInExistsDuringStagedInsert(docID []byte, cb func(err error)) {
 	go func() {
 		cb(cthw.Hooks.BeforeGetDocInExistsDuringStagedInsert(cthw.ctx, string(docID)))
+	}()
+}
+
+func (cthw *coreTxnsHooksWrapper) BeforeRemoveStagedInsert(docID []byte, cb func(err error)) {
+	go func() {
+		cb(cthw.Hooks.BeforeRemoveStagedInsert(cthw.ctx, string(docID)))
+	}()
+}
+
+func (cthw *coreTxnsHooksWrapper) AfterRemoveStagedInsert(docID []byte, cb func(err error)) {
+	go func() {
+		cb(cthw.Hooks.AfterRemoveStagedInsert(cthw.ctx, string(docID)))
 	}()
 }
 
