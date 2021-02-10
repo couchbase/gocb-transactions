@@ -107,8 +107,6 @@ func Init(cluster *gocb.Cluster, config *Config) (*Transactions, error) {
 	corecfg.Internal.Hooks = hooksWrapper
 	corecfg.Internal.CleanUpHooks = cleanupHooksWrapper
 	corecfg.Internal.ClientRecordHooks = clientRecordHooksWrapper
-	corecfg.Internal.DisableCompoundOps = config.Internal.DisableCompoundOps
-	corecfg.Internal.SerialUnstaging = config.Internal.SerialUnstaging
 	corecfg.Internal.NumATRs = config.Internal.NumATRs
 
 	txns, err := coretxns.Init(corecfg)

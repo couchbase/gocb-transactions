@@ -101,8 +101,6 @@ func NewCleaner(agentProvider coretxns.BucketAgentProviderFn, config *Config) Cl
 	corecfg.CleanupQueueSize = config.CleanupQueueSize
 	corecfg.BucketAgentProvider = agentProvider
 	corecfg.Internal.CleanUpHooks = cleanupHooksWrapper
-	corecfg.Internal.DisableCompoundOps = config.Internal.DisableCompoundOps
-	corecfg.Internal.SerialUnstaging = config.Internal.SerialUnstaging
 	corecfg.Internal.NumATRs = config.Internal.NumATRs
 
 	return &coreCleanerWrapper{
@@ -267,8 +265,6 @@ func NewLostCleanup(agentProvider coretxns.BucketAgentProviderFn, locationProvid
 	corecfg.LostCleanupATRLocationProvider = locationProvider
 	corecfg.Internal.CleanUpHooks = cleanupHooksWrapper
 	corecfg.Internal.ClientRecordHooks = cleanupHooksWrapper
-	corecfg.Internal.DisableCompoundOps = config.Internal.DisableCompoundOps
-	corecfg.Internal.SerialUnstaging = config.Internal.SerialUnstaging
 	corecfg.Internal.NumATRs = config.Internal.NumATRs
 
 	return &coreLostCleanerWrapper{
