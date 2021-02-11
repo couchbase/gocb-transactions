@@ -15,7 +15,7 @@
 package transactions
 
 import (
-	coretxns "github.com/couchbaselabs/gocbcore-transactions"
+	coretxns "github.com/couchbase/gocbcore-transactions"
 )
 
 // ProtocolVersion returns the protocol version that this library supports.

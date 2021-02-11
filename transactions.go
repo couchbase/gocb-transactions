@@ -23,7 +23,7 @@ import (
 	"github.com/couchbase/gocbcore/v9"
 
 	gocb "github.com/couchbase/gocb/v2"
-	coretxns "github.com/couchbaselabs/gocbcore-transactions"
+	coretxns "github.com/couchbase/gocbcore-transactions"
 )
 
 type AttemptFunc func(*AttemptContext) error

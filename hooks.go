@@ -15,7 +15,7 @@
 package transactions
 
 import (
-	coretxns "github.com/couchbaselabs/gocbcore-transactions"
+	coretxns "github.com/couchbase/gocbcore-transactions"
 )
 
 // TransactionHooks provides a number of internal hooks used for testing.

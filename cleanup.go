@@ -16,7 +16,7 @@ package transactions
 
 import (
 	"github.com/couchbase/gocb/v2"
-	coretxns "github.com/couchbaselabs/gocbcore-transactions"
+	coretxns "github.com/couchbase/gocbcore-transactions"
 )
 
 // DocRecord represents an individual document operation requiring cleanup.

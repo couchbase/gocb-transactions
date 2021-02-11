@@ -19,7 +19,7 @@ import (
 
 	"github.com/couchbase/gocb/v2"
 
-	coretxns "github.com/couchbaselabs/gocbcore-transactions"
+	coretxns "github.com/couchbase/gocbcore-transactions"
 )
 
 // DurabilityLevel specifies the level of synchronous replication to use.

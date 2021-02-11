@@ -15,7 +15,7 @@
 package transactions
 
 import (
-	coretxns "github.com/couchbaselabs/gocbcore-transactions"
+	coretxns "github.com/couchbase/gocbcore-transactions"
 )
 
 type AttemptState int

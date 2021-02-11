@@ -18,7 +18,7 @@ import (
 	"errors"
 
 	"github.com/couchbase/gocb/v2"
-	coretxns "github.com/couchbaselabs/gocbcore-transactions"
+	coretxns "github.com/couchbase/gocbcore-transactions"
 )
 
 // AttemptContext represents a single attempt to execute a transaction.

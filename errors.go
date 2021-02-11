@@ -17,7 +17,7 @@ package transactions
 import (
 	"errors"
 
-	coretxns "github.com/couchbaselabs/gocbcore-transactions"
+	coretxns "github.com/couchbase/gocbcore-transactions"
 )
 
 var (
