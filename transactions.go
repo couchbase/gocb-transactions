@@ -16,11 +16,10 @@ package transactions
 
 import (
 	"errors"
+	"github.com/couchbase/gocbcore/v10"
 	"log"
 	"math"
 	"time"
-
-	"github.com/couchbase/gocbcore/v9"
 
 	gocb "github.com/couchbase/gocb/v2"
 	coretxns "github.com/couchbase/gocbcore-transactions"
@@ -301,9 +300,14 @@ func (t *Transactions) Close() error {
 	return t.txns.Close()
 }
 
-func (t *Transactions) agentProvider(bucketName string) (*gocbcore.Agent, error) {
+func (t *Transactions) agentProvider(bucketName string) (*gocbcore.Agent, string, error) {
 	b := t.cluster.Bucket(bucketName)
-	return b.Internal().IORouter()
+	agent, err := b.Internal().IORouter()
+	if err != nil {
+		return nil, "", err
+	}
+
+	return agent, "", err
 }
 
 func (t *Transactions) atrLocationsProvider() ([]coretxns.LostATRLocation, error) {

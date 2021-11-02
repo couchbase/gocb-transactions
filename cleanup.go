@@ -165,7 +165,7 @@ func (ccw *coreCleanerWrapper) CleanupAttempt(bucket *gocb.Bucket, isRegular boo
 			Request:           req,
 		}
 	}
-	ccw.wrapped.CleanupAttempt(a, cleanupRequestToCore(req), isRegular, func(attempt coretxns.CleanupAttempt) {
+	ccw.wrapped.CleanupAttempt(a, "", cleanupRequestToCore(req), isRegular, func(attempt coretxns.CleanupAttempt) {
 		waitCh <- cleanupAttemptFromCore(attempt)
 	})
 	return <-waitCh
@@ -197,7 +197,7 @@ func (clcw *coreLostCleanerWrapper) ProcessATR(bucket *gocb.Bucket, collection, 
 	var ourAttempts []CleanupAttempt
 	var ourStats ProcessATRStats
 	waitCh := make(chan struct{}, 1)
-	clcw.wrapped.ProcessATR(a, collection, scope, atrID, func(attempts []coretxns.CleanupAttempt, stats coretxns.ProcessATRStats) {
+	clcw.wrapped.ProcessATR(a, "", collection, scope, atrID, func(attempts []coretxns.CleanupAttempt, stats coretxns.ProcessATRStats) {
 		for _, a := range attempts {
 			ourAttempts = append(ourAttempts, cleanupAttemptFromCore(a))
 		}
@@ -221,7 +221,7 @@ func (clcw *coreLostCleanerWrapper) ProcessClient(bucket *gocb.Bucket, collectio
 		return nil, err
 	}
 
-	clcw.wrapped.ProcessClient(a, collection, scope, clientUUID, func(details *coretxns.ClientRecordDetails, err error) {
+	clcw.wrapped.ProcessClient(a, "", collection, scope, clientUUID, func(details *coretxns.ClientRecordDetails, err error) {
 		if err != nil {
 			waitCh <- result{
 				err: err,
