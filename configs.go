@@ -75,6 +75,9 @@ type Config struct {
 	// CleanupQueueSize controls the maximum queue size for the cleanup thread.
 	CleanupQueueSize uint32
 
+	// QueryConfig specifies any query configuration to use in transactions.
+	QueryConfig QueryConfig
+
 	// Internal specifies a set of options for internal use.
 	// Internal: This should never be used and is not supported.
 	Internal struct {
@@ -85,11 +88,23 @@ type Config struct {
 	}
 }
 
-// PerTransactionConfig specifies options which can be overriden on a per transaction basis.
+// PerTransactionConfig specifies options which can be overridden on a per transaction basis.
 type PerTransactionConfig struct {
 	// DurabilityLevel specifies the durability level that should be used
 	// for all write operations performed by this transaction.
 	DurabilityLevel DurabilityLevel
+	ExpirationTime  time.Duration
+	QueryConfig     PerTransactionQueryConfig
+}
+
+// QueryConfig specifies various tunable query options related to transactions.
+type QueryConfig struct {
+	ScanConsistency gocb.QueryScanConsistency
+}
+
+// PerTransactionQueryConfig specifies query options which can be overridden on a per transaction basis.
+type PerTransactionQueryConfig struct {
+	ScanConsistency gocb.QueryScanConsistency
 }
 
 // ATRLocation specifies a specific location where ATR entries should be
@@ -98,4 +113,68 @@ type ATRLocation struct {
 	BucketName     string
 	ScopeName      string
 	CollectionName string
+}
+
+// SingleQueryTransactionConfig specifies various tunable query options related to single query transactions.
+type SingleQueryTransactionConfig struct {
+	QueryOptions    QueryOptions
+	DurabilityLevel DurabilityLevel
+	ExpirationTime  time.Duration
+}
+
+type QueryOptions struct {
+	ScanConsistency gocb.QueryScanConsistency
+	Profile         gocb.QueryProfileMode
+
+	// ScanCap is the maximum buffered channel size between the indexer connectionManager and the query service for index scans.
+	ScanCap uint32
+
+	// PipelineBatch controls the number of items execution operators can batch for Fetch from the KV.
+	PipelineBatch uint32
+
+	// PipelineCap controls the maximum number of items each execution operator can buffer between various operators.
+	PipelineCap uint32
+
+	// ScanWait is how long the indexer is allowed to wait until it can satisfy ScanConsistency/ConsistentWith criteria.
+	ScanWait time.Duration
+	Readonly bool
+
+	// ClientContextID provides a unique ID for this query which can be used matching up requests between connectionManager and
+	// server. If not provided will be assigned a uuid value.
+	ClientContextID      string
+	PositionalParameters []interface{}
+	NamedParameters      map[string]interface{}
+
+	// FlexIndex tells the query engine to use a flex index (utilizing the search service).
+	FlexIndex bool
+
+	// Raw provides a way to provide extra parameters in the request body for the query.
+	Raw map[string]interface{}
+
+	Prepared bool
+
+	Scope *gocb.Scope
+}
+
+func (qo *QueryOptions) toSDKOptions() gocb.QueryOptions {
+	scanc := qo.ScanConsistency
+	if scanc == 0 {
+		scanc = gocb.QueryScanConsistencyRequestPlus
+	}
+
+	return gocb.QueryOptions{
+		ScanConsistency:      scanc,
+		Profile:              qo.Profile,
+		ScanCap:              qo.ScanCap,
+		PipelineBatch:        qo.PipelineBatch,
+		PipelineCap:          qo.PipelineCap,
+		ScanWait:             qo.ScanWait,
+		Readonly:             qo.Readonly,
+		ClientContextID:      qo.ClientContextID,
+		PositionalParameters: qo.PositionalParameters,
+		NamedParameters:      qo.NamedParameters,
+		Raw:                  qo.Raw,
+		Adhoc:                !qo.Prepared,
+		FlexIndex:            qo.FlexIndex,
+	}
 }

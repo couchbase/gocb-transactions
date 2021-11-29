@@ -21,12 +21,13 @@ import (
 type AttemptState int
 
 const (
-	AttemptStateNothingWritten AttemptState = AttemptState(coretxns.AttemptStateNothingWritten)
-	AttemptStatePending        AttemptState = AttemptState(coretxns.AttemptStatePending)
-	AttemptStateCommitted      AttemptState = AttemptState(coretxns.AttemptStateCommitted)
-	AttemptStateCompleted      AttemptState = AttemptState(coretxns.AttemptStateCompleted)
-	AttemptStateAborted        AttemptState = AttemptState(coretxns.AttemptStateAborted)
-	AttemptStateRolledBack     AttemptState = AttemptState(coretxns.AttemptStateRolledBack)
+	AttemptStateNothingWritten = AttemptState(coretxns.AttemptStateNothingWritten)
+	AttemptStatePending        = AttemptState(coretxns.AttemptStatePending)
+	AttemptStateCommitting     = AttemptState(coretxns.AttemptStateCommitting)
+	AttemptStateCommitted      = AttemptState(coretxns.AttemptStateCommitted)
+	AttemptStateCompleted      = AttemptState(coretxns.AttemptStateCompleted)
+	AttemptStateAborted        = AttemptState(coretxns.AttemptStateAborted)
+	AttemptStateRolledBack     = AttemptState(coretxns.AttemptStateRolledBack)
 )
 
 // Result represents the result of a transaction which was executed.

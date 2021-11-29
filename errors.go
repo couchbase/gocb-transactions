@@ -16,7 +16,6 @@ package transactions
 
 import (
 	"errors"
-
 	coretxns "github.com/couchbase/gocbcore-transactions"
 )
 
@@ -61,9 +60,16 @@ var (
 	// which contains features this transaction does not support.
 	ErrForwardCompatibilityFailure = coretxns.ErrForwardCompatibilityFailure
 
+	// ErrIllegalState is used for when a transaction enters an illegal State.
+	ErrIllegalState = coretxns.ErrIllegalState
+
 	ErrDocumentNotFound = coretxns.ErrDocumentNotFound
 
 	ErrDocumentAlreadyExists = coretxns.ErrDocumentAlreadyExists
+
+	ErrAttemptNotFoundOnQuery = errors.New("attempt not found on query")
+
+	ErrCasMismatch = coretxns.ErrCasMismatch
 )
 
 type TransactionFailedError struct {
@@ -146,7 +152,7 @@ func (tfe TransactionFailedPostCommit) Result() *Result {
 	return tfe.result
 }
 
-// ErrTransactionOperationFailed is used when a transaction operation fails.
+// TransactionOperationFailedError is used when a transaction operation fails.
 // Internal: This should never be used and is not supported.
 type TransactionOperationFailedError struct {
 	shouldRetry       bool
@@ -206,5 +212,20 @@ func createTransactionOperationFailedError(err error) error {
 			errorCause: err,
 			errorClass: coretxns.ErrorClassFailOther,
 		}
+	}
+}
+
+func errorReasonFromString(reason string) coretxns.ErrorReason {
+	switch reason {
+	case "failed":
+		return coretxns.ErrorReasonTransactionFailed
+	case "expired":
+		return coretxns.ErrorReasonTransactionExpired
+	case "commit_ambiguous":
+		return coretxns.ErrorReasonTransactionCommitAmbiguous
+	case "failed_post_commit":
+		return coretxns.ErrorReasonTransactionFailedPostCommit
+	default:
+		return coretxns.ErrorReasonTransactionFailed
 	}
 }

@@ -1,9 +1,11 @@
-github.com/couchbase/gocb/v2 v2.3.2 h1:ND7NDs7VHqnkO+pPcbeMToiQS/KW10Yn9woBiFTnljc=
 github.com/couchbase/gocb/v2 v2.3.2/go.mod h1:NmEbg3pWHURqx5rPR3w/BcBRV5MRkc7i2kf0hq2Gdm0=
-github.com/couchbase/gocbcore-transactions v0.0.0-20211015175912-8d8655302661 h1:W9AWWkSGWKDWS+gwPIKqdzGDF+YHCX6ymxQvx4A/NG0=
-github.com/couchbase/gocbcore-transactions v0.0.0-20211015175912-8d8655302661/go.mod h1:W+sLc2i+hgGGzm0khKQ4t7kapFiaJitds5uhEWy+NW4=
-github.com/couchbase/gocbcore/v10 v10.0.3 h1:7WGBlEYPt1uM3jovjBR3qQyqWYPsAXwi1g88rZk01FQ=
+github.com/couchbase/gocb/v2 v2.3.5-0.20211206183843-8e6857ea4483 h1:wbCa8S7tI4nStqNOzR3Dp9az8OYlQLxaSu5lntmIzX8=
+github.com/couchbase/gocb/v2 v2.3.5-0.20211206183843-8e6857ea4483/go.mod h1:54GDxLaa9a3XEO8yzAD3l6Pr/tvkUuB4ReAeidZ/JBA=
+github.com/couchbase/gocbcore-transactions v0.0.0-20220110140047-0cfbabaea2ec h1:k6wpDK0eIr/2u9kAayqGOcB6b9JRR8fAV4RzIa2xe/U=
+github.com/couchbase/gocbcore-transactions v0.0.0-20220110140047-0cfbabaea2ec/go.mod h1:W+sLc2i+hgGGzm0khKQ4t7kapFiaJitds5uhEWy+NW4=
 github.com/couchbase/gocbcore/v10 v10.0.3/go.mod h1:s6dwBFs4c3+cAzZbo1q0VW+QasudhHJuehE8b8U2YNg=
+github.com/couchbase/gocbcore/v10 v10.0.6-0.20211206105630-17d05153dd05 h1:O2zwHjPBd4JJCfg7IzxQbdKk+IPjGSWo+mTvXTwH3gU=
+github.com/couchbase/gocbcore/v10 v10.0.6-0.20211206105630-17d05153dd05/go.mod h1:s6dwBFs4c3+cAzZbo1q0VW+QasudhHJuehE8b8U2YNg=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
